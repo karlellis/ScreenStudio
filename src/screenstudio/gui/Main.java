@@ -303,7 +303,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
         }
         command.setAudio(FFMpeg.AudioRate.Audio44K, Microphone.getVirtualAudio(m, i));
         Screen s = (Screen) cboDisplays.getSelectedItem();
-        command.setCaptureFormat(s.getId(), (int) s.getSize().getX(), (int) s.getSize().getY());
+        command.setCaptureFormat(":0.0", (int) s.getSize().getX(), (int) s.getSize().getY());
         command.setFramerate(s.getFps());
         command.setOutputFormat((FORMATS) cboTargets.getSelectedItem(), target);
         command.setPreset(FFMpeg.Presets.ultrafast);
@@ -318,7 +318,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
             command.setOverlay(runningOverlay);
         }
         command.setOutputSize((int) s.getSize().getWidth(), (int) s.getSize().getHeight(), (SIZES) cboProfiles.getSelectedItem());
-
+//        System.out.println("Command="+command.getCommand(false));
         return command;
     }
 
@@ -879,7 +879,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
             target.size = ((SIZES) cboProfiles.getSelectedItem()).name();
             target.mainSource = cboDisplays.getSelectedItem().toString();
             target.mainAudio = cboAudiosMicrophone.getSelectedItem().toString();
-			target.secondAudio = cboAudiosInternal.getSelectedItem().toString();
+            target.secondAudio = cboAudiosInternal.getSelectedItem().toString();
             target.showDuration = spinShowDurationTime.getValue().toString();
             if (cboWebcams.getSelectedIndex() > 0) {
                 Webcam w = (Webcam) cboWebcams.getSelectedItem();
