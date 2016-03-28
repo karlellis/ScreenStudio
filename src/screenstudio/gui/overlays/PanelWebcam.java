@@ -1,7 +1,18 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (C) 2014 Patrick Balleux
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package screenstudio.gui.overlays;
 
@@ -51,6 +62,7 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
         tips += "<li>@RECORDINGTIME (Recording time in minutes)</li>";
         tips += "<li>@STARTTIME (Time when the recording started)</li>";
         tips += "<li>@REMAININGTIME (Time remaining in minutes)</li>";
+        tips += "<li>@TEXT (Custom text from the text entry in the Panel tab...)</li>";
         tips += "</ul>";
         this.setToolTipText("<html>"+tips+"</html>");
     }
@@ -65,9 +77,9 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
     }
 
     @Override
-    public void setText(String text) {
+    public void setText(String text,String userTextContent) {
         mIsUpdating = true;
-        lblText.setText(replaceTags(text));
+        lblText.setText(replaceTags(text).replaceAll("@TEXT",userTextContent));
         lblText.repaint();
         mIsUpdating = false;
     }

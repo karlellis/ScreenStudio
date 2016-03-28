@@ -77,6 +77,18 @@ set the width and height also in the body tag.
 
 See http://www.w3schools.com/tags/ for a list of tags to use...
 
+- PANEL CONTENT TAGS
+
+In the text/html content, some tags are supported to udate the text content with values like the current date and time.
+
+	@CURRENTDATE (Current date)
+	@CURRENTTIME (Current time)
+ 	@RECORDINGTIME (Recording time in minutes)
+	@STARTTIME (Time when the recording started)
+	@REMAININGTIME (Time remaining in minutes)
+	@TEXT (Custom text from the text entry in the Panel tab...)
+
+
 - AUDIO INPUT:
 ScreenStudio is relying on Pulseaudio for audio recording.  When two audio input are selected (Mic+Internal), ScreenStudio will 
 add a virtual audio input that will mix both Mic and Internal audio input.  This virtual audio input will only exists while

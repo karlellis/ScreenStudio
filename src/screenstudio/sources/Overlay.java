@@ -33,13 +33,15 @@ import screenstudio.gui.overlays.PanelWebcam;
 public class Overlay implements Runnable {
 
     private File mContent;
+    private String mUserTextContent;
     private final PanelWebcam htmlRenderer;
     private final int mFPS;
     private boolean stopME = false;
     private OverlayTCPIP mOutput = null;
 
-    public Overlay(File content, int width, int height, int fps,screenstudio.sources.Webcam webcam,int showDurationTime) throws IOException, InterruptedException {
+    public Overlay(File content, int width, int height, int fps,screenstudio.sources.Webcam webcam,int showDurationTime,String userTextContent) throws IOException, InterruptedException {
         mContent = content;
+        mUserTextContent = userTextContent;
         htmlRenderer = new PanelWebcam(webcam, width, height,showDurationTime);
         htmlRenderer.setVisible(true);
         htmlRenderer.setSize(width, height);
@@ -50,6 +52,9 @@ public class Overlay implements Runnable {
         new Thread(this).start();
     }
 
+    public void setUserTextContent(String text){
+        mUserTextContent = text;
+    }
     public void setContent(File content){
         mContent = content;
     }
@@ -90,7 +95,7 @@ public class Overlay implements Runnable {
     public void run() {
         stopME = false;
         try {
-            htmlRenderer.setText("<html></html>");
+            htmlRenderer.setText("<html></html>","");
             htmlRenderer.repaint();
             while (!stopME) {
                 // Read content into renderer...
@@ -99,7 +104,7 @@ public class Overlay implements Runnable {
                 in.read(data);
                 if (mContent.getName().endsWith("html")) {
                     //Reading content from a local html file
-                    htmlRenderer.setText(new String(data));
+                    htmlRenderer.setText(new String(data),mUserTextContent);
                 } else if (mContent.getName().endsWith("url")) {
                     //Reading content from a webpage...
                     data = new byte[65536];
@@ -112,10 +117,10 @@ public class Overlay implements Runnable {
                         html.append(new String(data, 0, count));
                         count = in.read(data);
                     }
-                    htmlRenderer.setText(html.toString());
+                    htmlRenderer.setText(html.toString(),mUserTextContent);
                 } else {
                     //Reading raw content from a text file
-                    htmlRenderer.setText("<html>" + new String(data).replaceAll("\n", "<br>") + "</html>");
+                    htmlRenderer.setText("<html>" + new String(data).replaceAll("\n", "<br>") + "</html>",mUserTextContent);
                 }
                 htmlRenderer.repaint();
                 in.close();

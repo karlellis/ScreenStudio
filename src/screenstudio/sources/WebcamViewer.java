@@ -1,7 +1,18 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (C) 2014 Patrick Balleux
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package screenstudio.sources;
 
@@ -10,42 +21,51 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import screenstudio.encoder.FFMpeg;
 
 /**
  *
  * @author patrick
  */
-public class WebcamViewer extends javax.swing.JPanel implements Runnable{
+public class WebcamViewer extends javax.swing.JPanel implements Runnable {
 
-    private final File mDevice ;
+    private final File mDevice;
     private final int mWidth;
     private final int mHeight;
     private BufferedImage buffer;
     private boolean stopMe = false;
+
     /**
      * Creates new form WebcamViewer
+     *
      * @param device
      * @param width
      * @param height
      */
-    public WebcamViewer(File device,int width, int height) {
+    public WebcamViewer(File device, int width, int height) {
         initComponents();
         mDevice = device;
         mWidth = width;
         mHeight = height;
         this.setSize(width, height);
-        buffer = new BufferedImage(width,height,BufferedImage.TYPE_3BYTE_BGR);
+        buffer = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
+        this.setDoubleBuffered(true);
     }
 
-    public void stop(){
+    public void stop() {
         stopMe = true;
     }
+
     @Override
-    public void paint(Graphics g){
+    public void paint(Graphics g) {
         g.drawImage(buffer, 0, 0, this);
     }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -70,15 +90,41 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable{
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
-
     @Override
     public void run() {
+        String webcamFormat = "video4linux2";
+        File folder = new File("FFMPEG");
+        if (folder.exists()) {
+            File file;
+            if (Screen.isOSX()) {
+                file = new File(folder, "osx.properties");
+            } else {
+                file = new File(folder, "default.properties");
+            }
+
+            if (file.exists()) {
+                try {
+                    Properties p = new Properties();
+                    try (InputStream in = file.toURI().toURL().openStream()) {
+                        p.load(in);
+                    }
+                    webcamFormat = p.getProperty("WEBCAMFORMAT", webcamFormat);
+                    
+                } catch (MalformedURLException ex) {
+                    Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IOException ex) {
+                    Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
+                }
+
+            }
+        }
         try {
             stopMe = false;
-            Process p = Runtime.getRuntime().exec("ffmpeg -nostats -loglevel 0 -r 10 -video_size " +mWidth+"x" +mHeight+ " -f video4linux2 -i " + mDevice + " -f rawvideo -pix_fmt bgr24 -");
+
+            Process p = Runtime.getRuntime().exec("ffmpeg -nostats -loglevel 0 -f " + webcamFormat + " -i " + mDevice + " -s " + mWidth + "x" + mHeight + " -f rawvideo -pix_fmt bgr24 -");
             java.io.DataInputStream in = new java.io.DataInputStream(p.getInputStream());
             byte[] imageBytes = ((DataBufferByte) buffer.getRaster().getDataBuffer()).getData();
-            while(!stopMe){
+            while (!stopMe) {
                 in.readFully(imageBytes);
                 this.repaint();
             }

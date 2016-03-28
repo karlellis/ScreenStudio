@@ -200,14 +200,6 @@ public class Microphone {
         return list;
     }
 
-    public static void main(String[] args) {
-        try {
-            getOSXDevices();
-        } catch (IOException | InterruptedException ex) {
-            Logger.getLogger(Microphone.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
     /**
      * @return the device
      */

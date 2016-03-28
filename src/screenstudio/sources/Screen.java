@@ -24,8 +24,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -160,14 +158,6 @@ public class Screen {
             return "None";
         } else {
             return "Screen " + screenIndex;
-        }
-    }
-
-    public static void main(String[] args) {
-        try {
-            Screen.captureWindowArea();
-        } catch (IOException ex) {
-            Logger.getLogger(Screen.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
