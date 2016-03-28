@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+USER=$SUDO_USER
+DIR=/home/$SUDO_USER
+cp -a -R /usr/lib/ScreenStudio/ ${DIR}
+chown -R ${USER}:${USER} ${DIR}/ScreenStudio

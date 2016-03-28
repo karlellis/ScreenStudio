@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=ScreenStudio
+Type=Application
+Categories=AudioVideo;
+Terminal=false
+Icon=/usr/share/pixmaps/screenstudio.png
+Exec=/usr/bin/screenstudio
+Comment=ScreenStudio for GNU/Linux
+Name[en_US]=screenstudio
+Comment[en_US]=ScreenStudio for GNU/Linux

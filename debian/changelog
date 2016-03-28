@@ -1,0 +1,217 @@
+screenstudio (2.0.2) trusty; urgency=medium
+
+  * Adds:  New TAG available for Panel Content: @TEXT
+  * Fixes: Fixed some performances issues with FFMpeg
+  * Changes: Tweaks on the encoding, faster FLV encoding for local video
+  * Changes: Requires less CPU usage when streaming
+  * Changes: Webcam display is smoother
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Mon, 28 Mar 2016 09:02:07 +0200
+
+screenstudio (1.5.6.1) trusty; urgency=medium
+
+  * Adds: 
+  * Fixes: Try fixing Ubuntu 15.04 Vivid build
+  * Changes:
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Thu, 05 Mar 2015 19:57:28 +0100
+
+screenstudio (1.5.6) trusty; urgency=medium
+
+  * Adds: 
+  * Fixes: Retry fixing ScreenStudio start.
+  * Changes:
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Wed, 18 Feb 2015 18:44:35 +0100
+
+screenstudio (1.5.5) trusty; urgency=medium
+
+  * Adds: 
+  * Fixes: Fixed ScreenStudio start.
+  * Changes:
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Wed, 18 Feb 2015 18:44:35 +0100
+
+screenstudio (1.5.4) trusty; urgency=medium
+
+  * Adds:
+  * Fixes:
+  * Changes:
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Wed, 18 Feb 2015 17:53:54 +0100
+
+screenstudio (1.5.2) trusty; urgency=medium
+
+  * Adds: Added export import of settings.
+  * Fixes: Minor fixes.
+  * Fixes: Fixed compatibility issue.
+  * Fixes: Fixed launcher issue.
+  * Changes: Refactored to downsize the archive.
+  * Changes: Improved OSX App bundle.
+  * Changes: Updated OSX App Bundle.
+  * Changes: For Mac OSX, ffmpeg is not located into the App bundle.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Thu, 29 Jan 2015 19:23:04 +0100
+
+screenstudio (1.5.0) trusty; urgency=medium
+
+  * Adds: Adding modifications to support OS X, Java 8 is required to build and run.
+  * Adds: Added MOV format for OSX.
+  * Adds: Added webcam resize.
+  * Adds: Added package for OSX bundle.
+  * Adds: Added new service VaughnLive.tv http://vaughnlive.tv/screenstudio
+  * Fixes: Fixed issue with screen detection.
+  * Fixes: Fixed a few issues to compile under Ubuntu.
+  * Fixes: Fixed preview.
+  * Fixes: Fixed issue with deploying ffmpeg.
+  * Fixes: Fixed packaging.
+  * Fixes: Minor fix when running under OSX. Fixed a few issues on OS X.
+  * Fixes: Fix muxer.
+  * Fixes: Handled exception when no source is selected.
+  * Changes: Updated OSX App.
+  * Changes: Re-packaged OSX app.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Wed, 14 Jan 2015 20:55:25 +0100
+
+screenstudio (1.4.2) trusty; urgency=medium
+
+  * Adds: Added a new HTML editor for the overlay.
+  * Fixes: Integrating Ekit and modifying its source code.
+  * Fixes: Testing and fixing small bugs.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Tue, 16 Dec 2014 17:57:27 +0100
+
+screenstudio (1.4.1) trusty; urgency=medium
+
+  * Adds: Added new mode to record from the webcam only.
+  * Fixes: Error when recording with a webcam + desktop.
+  * Fixes: Preferences were saved under the wrong name.
+  * Fixes: Minor improvements.
+  * Fixes: Recording screen was not reloaded properly.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Fri, 24 Oct 2014 17:49:38 +0200
+
+screenstudio (1.3.0) trusty; urgency=medium
+
+  * Fixes: Fixed location bug (trying to at least).
+  * Adds: Added Refresh Sources to update audio and webcams added.
+  * Adds: Trying to add Utopic PPA builds.
+  * Removes: libavformat-extra-xx dependences for Utopic compatibility.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sun, 14 Sep 2014 08:42:51 +0200
+
+screenstudio (1.2.8) trusty; urgency=medium
+
+  * Fixes: Fixed Tray Icon display.
+  * Fixes: Fixed global shortcuts that were not updating.
+  * Adds: Added "None" as an audio source for both Mic and Desktop.
+  * Adds: Added support for SteamOS (with support for FFMPEG).
+  * Changes: Set animated splash.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Fri, 29 Aug 2014 17:15:28 +0200
+
+screenstudio (1.2.6) trusty; urgency=medium
+
+  * Fixes: Small bugs fixed.
+  * Adds: Added System Check to help you figure out what is missing﻿.
+  * Removes: Removed dependencies to libjna-java as it has been integrated into the package.
+  * Changes: Better error handling when something goes wrong.
+  * Changes: Added libjna-java conflicts in debian/control.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Thu, 28 Aug 2014 17:05:52 +0200
+
+screenstudio (1.2.4) trusty; urgency=medium
+
+  * Fixes: Many bug fix.
+  * Adds: New Capture Window feature.
+  * Adds: Added OGG profile for recording.
+  * Changes: Added x11-utils dependence in debian/control.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sun, 27 Jul 2014 20:30:23 +0200
+
+screenstudio (1.2.3) trusty; urgency=medium
+
+  * Fixes: Minor display glitch when recording.
+  * Fixes: Webcam layout loading﻿.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Wed, 25 Jun 2014 17:48:03 +0200
+
+screenstudio (1.2.2) trusty; urgency=medium
+
+  * Fixes: Loading the overlay when starting.
+  * Fixes: Minor display bug
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Tue, 24 Jun 2014 17:20:06 +0200
+
+screenstudio (1.2.1) trusty; urgency=medium
+
+  * Fixes: Forgot to copy new java libraries (Karl Ellis)
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sat, 21 Jun 2014 20:52:42 +0200
+
+screenstudio (1.2.0) trusty; urgency=medium
+
+  * Fixes: Bug fixes.
+  * Adds: New Overlay engine based on HTML.
+  * Adds: Global Shortcut keys are now supported.
+  * Adds: Exporting tha XML from the Options.
+  * Adds: Added new languages to Multi-languages support.
+  * Changes: Better RTMP settings.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sat, 21 Jun 2014 19:44:55 +0200
+
+screenstudio (1.1.6) trusty; urgency=medium
+
+  * Fixes: Minor bug fixes.
+  * Adds: Multi-language support (English, French).
+  * Adds: Added preset formats on screen capture area.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Fri, 13 Jun 2014 19:21:39 +0200
+
+screenstudio (1.1.5) trusty; urgency=medium
+
+  * Fixes: Minor fix when reloading a custom XML file
+  * Adds: Added menu entry to reset all preferences﻿
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Tue, 03 Jun 2014 17:28:52 +0200
+
+screenstudio (1.1.4) trusty; urgency=medium
+
+  * Fixes: Minor fixes.
+  * Adds: More options for Titles.
+  * Adds: Presets are available.
+  * Changes: Preview is back.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sun, 01 Jun 2014 09:31:43 +0200
+
+screenstudio (1.1.3) trusty; urgency=medium
+
+  * Fixes: Bug in Streaming to RTMP, actually using the command from Record To File (Thanks Jesse Litton)
+  * Changes: Default muxer is MPEGTS for all recorded files (FLV, MP4, MPEG)﻿.
+  * Changes: Made a few adjustments when Recording to FLV.
+  
+ -- Karl Ellis <soylent.tv@gmail.com>  Mon, 26 May 2014 17:06:26 +0200
+
+screenstudio (1.1.2) trusty; urgency=medium
+
+  * Fixes: Minor glitches in the Encoding file.
+  * Adds: Elapsed time in the Tray Icon.
+  * Adds: Can set customer recording folder.
+  * Changes: Improved the font color selector button.
+  
+ -- Karl Ellis <soylent.tv@gmail.com>  Sat, 24 May 2014 19:50:33 +0200
+
+screenstudio (1.1.1) trusty; urgency=medium
+
+  * Fixes: Display not properly sized on some distros.
+  * Adds: Option to set the recording folder via File menu.
+  * Adds: Service to record to YUV+WAV format.
+  * New upstream version
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Mon, 19 May 2014 17:20:06 +0200
+
+screenstudio (1.1.0) trusty; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sun, 18 May 2014 21:23:42 +0200

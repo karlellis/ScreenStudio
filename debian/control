@@ -1,0 +1,65 @@
+Source: screenstudio
+Section: video
+Priority: optional
+Maintainer: Karl Ellis <soylent.tv@gmail.com>
+Build-Depends: debhelper (>= 7.2.7~),
+  cdbs (>= 0.4.69~),
+  dkms (>= 2.1.1.1),
+  devscripts,
+  bzip2,
+  subversion,
+  linux-headers-generic,
+  ant,
+  openjdk-8-jdk,
+  libappframework-java,
+  libcommons-cli-java,
+  libcommons-codec-java,
+  libcommons-httpclient-java,
+  libcommons-lang3-java,
+  libjsr305-java,
+  liblog4j1.2-java,
+  libnetty-java,
+  libslf4j-java,
+  libswingworker-java,
+  junit
+Standards-Version: 3.9.3
+Homepage: http://screenstudio.crombz.com/
+Vcs-Svn:
+Vcs-Browser:
+
+Package: screenstudio
+Architecture: amd64 i386
+Depends: openjdk-8-jre,
+  java-wrappers,
+  libappframework-java,
+  libcommons-cli-java,
+  libcommons-codec-java,
+  libcommons-httpclient-java,
+  libcommons-lang3-java,
+  libjsr305-java,
+  liblog4j1.2-java,
+  libnetty-java,
+  libslf4j-java,
+  libswingworker-java,
+  libav-tools | ffmpeg,
+  libavformat-extra-53 | libavformat-extra-54 | libavformat56 | libavformat-ffmpeg56,
+  pavucontrol,
+  x11-utils,
+  pulseaudio-utils,
+  zenity,
+  wmctrl,
+  ${shlibs:Depends},
+  ${misc:Depends}
+Recommends:
+  ${shlibs:Recommends}
+Suggests:
+  ${shlibs:Suggests}
+Provides: libjna-java
+Conflicts: libjna-java
+Replaces: libjna-java
+Description: Broadcast your Desktop and Webcam over the internet.
+  ScreenStudio will use the power of avconv to let you create a screencast
+  of your desktop, with your webcam and a banner in overlay.
+  It is built around "avconv" that is currently available on all Linux distos
+  and should work "out-of-the-box". There are no dependencies beside the need
+  for the JRE 8.0 (OpenJDK). By Patrick Balleux.

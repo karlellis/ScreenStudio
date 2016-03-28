@@ -1,0 +1,12 @@
+debian/screenstudio.desktop usr/share/applications
+debian/screenstudio.png usr/share/pixmaps
+debian/wrappers/screenstudio usr/bin
+
+dist/* /usr/lib/ScreenStudio
+src/screenstudio/gui/images/logo.png /usr/lib/ScreenStudio
+src/screenstudio/gui/images/splash.gif /usr/lib/ScreenStudio
+src/screenstudio/gui/images/splash.png /usr/lib/ScreenStudio
+Capture/*.* /usr/lib/ScreenStudio/Capture
+FFMPEG/*.* /usr/lib/ScreenStudio/FFMPEG
+Overlays/*.* /usr/lib/ScreenStudio/Overlays
+RTMP/*.* /usr/lib/ScreenStudio/RTMP
