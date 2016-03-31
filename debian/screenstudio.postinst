@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-USER=$SUDO_USER
+USER="$(who -m | cut -d' ' -f 1)"
 DIR=/home/${USER}/
 echo ${DIR}
 cp -a -R /usr/lib/ScreenStudio/ ${DIR}
