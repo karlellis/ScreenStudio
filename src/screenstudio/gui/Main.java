@@ -584,6 +584,11 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setFont(new java.awt.Font("Nimbus Roman No9 L", 0, 10)); // NOI18N
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                formWindowClosing(evt);
+            }
+        });
 
         cboTargets.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         cboTargets.addActionListener(new java.awt.event.ActionListener() {
@@ -821,7 +826,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                 .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel10)
                     .addComponent(txtWebcamTitle, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 37, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(chkDebugMode)
                 .addContainerGap())
         );
@@ -847,10 +852,10 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
         jLabel6.setText("Panel Width");
 
-        spinPanelWidth.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(320), null, null, Integer.valueOf(10)));
+        spinPanelWidth.setModel(new javax.swing.SpinnerNumberModel(320, null, null, 10));
         spinPanelWidth.setEditor(new javax.swing.JSpinner.NumberEditor(spinPanelWidth, ""));
 
-        spinShowDurationTime.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(30), Integer.valueOf(0), null, Integer.valueOf(15)));
+        spinShowDurationTime.setModel(new javax.swing.SpinnerNumberModel(30, 0, null, 15));
 
         jLabel1.setText("Duration");
 
@@ -1127,6 +1132,40 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
             }
         }
     }//GEN-LAST:event_lblNoticeMouseClicked
+
+    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        try {
+            target.format = cboTargets.getSelectedItem().toString();
+            Screen s = (Screen) cboDisplays.getSelectedItem();
+            target.captureX = "" + (int) s.getSize().getX();
+            target.captureY = "" + (int) s.getSize().getY();
+            target.captureWidth = "" + (int) s.getSize().getWidth();
+            target.captureHeight = "" + (int) s.getSize().getHeight();
+            target.framerate = "" + s.getFps();
+            target.size = ((SIZES) cboProfiles.getSelectedItem()).name();
+            target.mainSource = cboDisplays.getSelectedItem().toString();
+            target.mainAudio = cboAudiosMicrophone.getSelectedItem().toString();
+            target.secondAudio = cboAudiosInternal.getSelectedItem().toString();
+            target.showDuration = spinShowDurationTime.getValue().toString();
+            if (cboWebcams.getSelectedIndex() > 0) {
+                Webcam w = (Webcam) cboWebcams.getSelectedItem();
+                target.webcamDevice = w.toString();
+                target.webcamWidth = "" + w.getWidth();
+                target.webcamHeight = "" + w.getHeight();
+                target.webcamOffset = "" + w.getOffset();
+            } else {
+                target.webcamDevice = "";
+            }
+            if (cboOverlays.getSelectedItem() != null) {
+                target.mainOverlay = cboOverlays.getSelectedItem().toString();
+                target.mainOverlayWidth = spinPanelWidth.getValue().toString();
+            }
+            target.panelTextContent = txtPanelContentText.getText();
+            target.saveDefault();
+        } catch (IOException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_formWindowClosing
 
     /**
      * @param args the command line arguments
