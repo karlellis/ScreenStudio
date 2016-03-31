@@ -113,10 +113,12 @@ public class Targets {
     public String webcamWidth = "320";
     public String webcamHeight = "240";
     public String webcamOffset = "0.0";
+    public String webcamTitle = "";
     public String outputPreset = "ultrafast";
     public String outputVideoBitrate = "9000";
     public String showDuration = "60";
     public String panelTextContent = "";
+    public String shortcutKey = "control shift R";
 // </editor-fold>
 
     public void saveDefault() throws IOException {

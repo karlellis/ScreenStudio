@@ -39,10 +39,10 @@ public class Overlay implements Runnable {
     private boolean stopME = false;
     private OverlayTCPIP mOutput = null;
 
-    public Overlay(File content, int width, int height, int fps,screenstudio.sources.Webcam webcam,int showDurationTime,String userTextContent) throws IOException, InterruptedException {
+    public Overlay(File content, int width, int height, int fps,screenstudio.sources.Webcam webcam,int showDurationTime,String userTextContent,String webcamTitle) throws IOException, InterruptedException {
         mContent = content;
         mUserTextContent = userTextContent;
-        htmlRenderer = new PanelWebcam(webcam, width, height,showDurationTime);
+        htmlRenderer = new PanelWebcam(webcam, width, height,showDurationTime,webcamTitle);
         htmlRenderer.setVisible(true);
         htmlRenderer.setSize(width, height);
         htmlRenderer.setOpaque(true);

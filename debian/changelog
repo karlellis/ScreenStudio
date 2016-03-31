@@ -1,3 +1,12 @@
+screenstudio (2.0.3) trusty; urgency=medium
+
+  * Adds: Shortcuts are back
+  * Adds: Supporting dual monitors
+  * Fixes: Fixed capturing on a second monitor
+  * Changes: Other minor tweaks...
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Thu, 31 Mar 2016 17:18:41 +0200
+
 screenstudio (2.0.2) trusty; urgency=medium
 
   * Adds:  New TAG available for Panel Content: @TEXT

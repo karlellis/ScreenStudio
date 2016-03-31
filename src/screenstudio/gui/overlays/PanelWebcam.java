@@ -34,6 +34,7 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
     private final long startingTime;
     private final long showEndTime;
     private boolean mIsUpdating = false;
+    
     /**
      * Creates new form PanelWebcam
      *
@@ -42,18 +43,22 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
      * @param height
      * @param showDuration
      */
-    public PanelWebcam(screenstudio.sources.Webcam webcam, int width, int height,int showDuration) {
+    public PanelWebcam(screenstudio.sources.Webcam webcam, int width, int height,int showDuration, String webcamTitle ) {
         initComponents();
         startingTime=System.currentTimeMillis();
         showEndTime = System.currentTimeMillis() + (showDuration * 60000);
         if (webcam != null) {
-            mViewer = new WebcamViewer(new File(webcam.getDevice()), webcam.getWidth(), webcam.getHeight());
+            mViewer = new WebcamViewer(new File(webcam.getDevice()), webcam.getWidth(), webcam.getHeight(),webcamTitle);
+            mViewer.setOpaque(true);
+            panWebcam.setOpaque(true);
             panWebcam.add(mViewer, BorderLayout.CENTER);
             new Thread(mViewer).start();
             System.out.println("Started webcam viewer");
         } else {
             mViewer = null;
             this.remove(panWebcam);
+            this.revalidate();
+            this.doLayout();
         }
         String tips  = "<H1>Supported tags</H1>";
         tips += "<ul>";
@@ -65,6 +70,7 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
         tips += "<li>@TEXT (Custom text from the text entry in the Panel tab...)</li>";
         tips += "</ul>";
         this.setToolTipText("<html>"+tips+"</html>");
+        
     }
 
     public boolean IsUpdating(){
@@ -75,7 +81,6 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
             mViewer.stop();
         }
     }
-
     @Override
     public void setText(String text,String userTextContent) {
         mIsUpdating = true;
@@ -93,7 +98,6 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
         retValue = retValue.replaceAll("@RECORDINGTIME", (System.currentTimeMillis()-startingTime)/60000 + " min");
         retValue = retValue.replaceAll("@STARTTIME", formatTime.format(new Date(startingTime)));
         retValue = retValue.replaceAll("@REMAININGTIME", (((showEndTime - System.currentTimeMillis())/60000)+1) + " min");
-        
         return retValue;
     }
     /**
@@ -111,7 +115,8 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
         setBackground(java.awt.Color.black);
         setLayout(new java.awt.BorderLayout());
 
-        panWebcam.setBackground(new java.awt.Color(224, 31, 67));
+        panWebcam.setBackground(new java.awt.Color(102, 102, 102));
+        panWebcam.setForeground(java.awt.Color.white);
         panWebcam.setPreferredSize(new java.awt.Dimension(320, 240));
         panWebcam.setLayout(new java.awt.BorderLayout());
         add(panWebcam, java.awt.BorderLayout.NORTH);

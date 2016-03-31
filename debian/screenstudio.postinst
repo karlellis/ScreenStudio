@@ -1,6 +1,7 @@
 #!/bin/sh
 set -e
 USER=$SUDO_USER
-DIR=/home/$SUDO_USER
+DIR=/home/${USER}/
+echo ${DIR}
 cp -a -R /usr/lib/ScreenStudio/ ${DIR}
 chown -R ${USER}:${USER} ${DIR}/ScreenStudio

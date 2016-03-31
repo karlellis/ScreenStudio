@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Patrick Balleux
+ * Copyright (C) 2016 Patrick Balleux
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,11 +16,15 @@
  */
 package screenstudio.gui;
 
+import com.tulskiy.keymaster.common.HotKey;
+import com.tulskiy.keymaster.common.HotKeyListener;
+import com.tulskiy.keymaster.common.Provider;
 import java.awt.AWTException;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.CheckboxMenuItem;
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -29,6 +33,7 @@ import java.awt.SystemTray;
 import java.awt.TrayIcon;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
@@ -36,12 +41,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.KeyStroke;
 import screenstudio.Version;
 import screenstudio.encoder.FFMpeg;
 import screenstudio.gui.overlays.PanelWebcam;
@@ -57,13 +64,14 @@ import screenstudio.targets.Targets.FORMATS;
  *
  * @author patrick
  */
-public class Main extends javax.swing.JFrame implements ItemListener {
+public class Main extends javax.swing.JFrame implements ItemListener, HotKeyListener {
 
     private Targets target = new Targets();
     private Overlay runningOverlay = null;
     private TrayIcon trayIcon = null;
     private long recordingTimestamp = 0;
-
+    //Shortcut key handler
+    private Provider keyShortcuts = null;
     private boolean isLoading = false;
 
     /**
@@ -82,6 +90,17 @@ public class Main extends javax.swing.JFrame implements ItemListener {
         this.pack();
 
         isLoading = false;
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                //Check for a new version...
+                if (Version.hasNewVersion()) {
+                    System.out.println("TEST");
+                    lblNotice.setText("A new version is available");
+                }
+            }
+        }).start();
     }
 
     private void initControls() {
@@ -210,6 +229,48 @@ public class Main extends javax.swing.JFrame implements ItemListener {
             }
         }
         txtPanelContentText.setText(target.panelTextContent);
+        if (target.shortcutKey.length() == 0) {
+            target.shortcutKey = "control shift R";
+        }
+        chkShortcutControl.setSelected(target.shortcutKey.contains("control"));
+        chkShortcutSHIFT.setSelected(target.shortcutKey.contains("shift"));
+        cboShortcutKey.setSelectedItem(target.shortcutKey.toUpperCase().trim().substring(target.shortcutKey.length() - 1, target.shortcutKey.length()));
+        System.out.println("Shortcut Key in use: " + target.shortcutKey.trim());
+        initializeShortCuts();
+
+        txtWebcamTitle.setText(target.webcamTitle);
+    }
+
+    private void initializeShortCuts() {
+        final Main instance = this;
+
+        new Thread(() -> {
+            try {
+                if (keyShortcuts == null) {
+                    keyShortcuts = Provider.getCurrentProvider(false);
+                }
+                keyShortcuts.reset();
+                keyShortcuts.register(KeyStroke.getKeyStroke(target.shortcutKey), instance);
+            } catch (Exception ex) {
+                keyShortcuts = null;
+            }
+        }).start();
+
+    }
+
+    private void stopShortcuts() {
+        final Main instance = this;
+        new Thread(() -> {
+            try {
+                if (keyShortcuts != null) {
+                    keyShortcuts.reset();
+                    keyShortcuts.stop();
+                }
+
+            } catch (Exception ex) {
+                keyShortcuts = null;
+            }
+        }).start();
     }
 
     private void setPanelContent(File file) {
@@ -264,7 +325,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
                     text += "<font color=red><B>Warning:</B> Secret key not set</font><BR>";
                 }
             }
-            if ((FORMATS) cboTargets.getSelectedItem() == FORMATS.BROADCAST){
+            if ((FORMATS) cboTargets.getSelectedItem() == FORMATS.BROADCAST) {
                 text += "<font color=red><B>Multicast:</B> udp://255.255.255.255:8888</font><BR>";
             }
         }
@@ -295,15 +356,15 @@ public class Main extends javax.swing.JFrame implements ItemListener {
         FFMpeg command = new FFMpeg();
         Microphone m = (Microphone) cboAudiosMicrophone.getSelectedItem();
         Microphone i = (Microphone) cboAudiosInternal.getSelectedItem();
-        if (m.getDescription().equals("None")){
+        if (m.getDescription().equals("None")) {
             m = null;
         }
-        if (i.getDescription().equals("None")){
+        if (i.getDescription().equals("None")) {
             i = null;
         }
         command.setAudio(FFMpeg.AudioRate.Audio44K, Microphone.getVirtualAudio(m, i));
         Screen s = (Screen) cboDisplays.getSelectedItem();
-        command.setCaptureFormat(":0.0", (int) s.getSize().getX(), (int) s.getSize().getY());
+        command.setCaptureFormat(s.getId(), (int) s.getSize().getX(), (int) s.getSize().getY());
         command.setFramerate(s.getFps());
         command.setOutputFormat((FORMATS) cboTargets.getSelectedItem(), target);
         command.setPreset(FFMpeg.Presets.ultrafast);
@@ -311,14 +372,14 @@ public class Main extends javax.swing.JFrame implements ItemListener {
             File content = (File) cboOverlays.getSelectedItem();
             if (cboWebcams.getSelectedIndex() > 0) {
                 Webcam w = (Webcam) cboWebcams.getSelectedItem();
-                runningOverlay = new Overlay(content, (Integer) spinPanelWidth.getValue(), (int) s.getSize().getHeight(), s.getFps(), w, (Integer) spinShowDurationTime.getValue(),txtPanelContentText.getText());
+                runningOverlay = new Overlay(content, (Integer) spinPanelWidth.getValue(), (int) s.getSize().getHeight(), s.getFps(), w, (Integer) spinShowDurationTime.getValue(), txtPanelContentText.getText(), txtWebcamTitle.getText());
             } else {
-                runningOverlay = new Overlay(content, (Integer) spinPanelWidth.getValue(), (int) s.getSize().getHeight(), s.getFps(), null, (Integer) spinShowDurationTime.getValue(),txtPanelContentText.getText());
+                runningOverlay = new Overlay(content, (Integer) spinPanelWidth.getValue(), (int) s.getSize().getHeight(), s.getFps(), null, (Integer) spinShowDurationTime.getValue(), txtPanelContentText.getText(), txtWebcamTitle.getText());
             }
             command.setOverlay(runningOverlay);
         }
         command.setOutputSize((int) s.getSize().getWidth(), (int) s.getSize().getHeight(), (SIZES) cboProfiles.getSelectedItem());
-//        System.out.println("Command="+command.getCommand(false));
+
         return command;
     }
 
@@ -477,7 +538,14 @@ public class Main extends javax.swing.JFrame implements ItemListener {
         chkDebugMode = new javax.swing.JCheckBox();
         jLabel7 = new javax.swing.JLabel();
         cboAudiosInternal = new javax.swing.JComboBox();
-        jPanel1 = new javax.swing.JPanel();
+        jLabel9 = new javax.swing.JLabel();
+        chkShortcutControl = new javax.swing.JCheckBox();
+        chkShortcutSHIFT = new javax.swing.JCheckBox();
+        cboShortcutKey = new javax.swing.JComboBox();
+        btnShortcutApply = new javax.swing.JButton();
+        jLabel10 = new javax.swing.JLabel();
+        txtWebcamTitle = new javax.swing.JTextField();
+        panPanel = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
         cboOverlays = new javax.swing.JComboBox();
         btnPreviewPanelContent = new javax.swing.JButton();
@@ -490,6 +558,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
         txtPanelContentText = new javax.swing.JTextArea();
         panStatusBar = new javax.swing.JPanel();
         lblMessages = new javax.swing.JLabel();
+        lblNotice = new javax.swing.JLabel();
 
         popTrayIcon.setLabel("ScreenStudio");
 
@@ -515,11 +584,6 @@ public class Main extends javax.swing.JFrame implements ItemListener {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setFont(new java.awt.Font("Nimbus Roman No9 L", 0, 10)); // NOI18N
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosing(java.awt.event.WindowEvent evt) {
-                formWindowClosing(evt);
-            }
-        });
 
         cboTargets.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         cboTargets.addActionListener(new java.awt.event.ActionListener() {
@@ -563,6 +627,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
         });
 
         lblCurrentTargetConfiguration.setText("None");
+        lblCurrentTargetConfiguration.setVerticalAlignment(javax.swing.SwingConstants.TOP);
         lblCurrentTargetConfiguration.setAutoscrolls(true);
         lblCurrentTargetConfiguration.setBorder(javax.swing.BorderFactory.createTitledBorder("Configuration"));
 
@@ -668,6 +733,23 @@ public class Main extends javax.swing.JFrame implements ItemListener {
             }
         });
 
+        jLabel9.setText("Shortcut Key");
+
+        chkShortcutControl.setText("CTRL");
+
+        chkShortcutSHIFT.setText("SHIFT");
+
+        cboShortcutKey.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" }));
+
+        btnShortcutApply.setText("Apply");
+        btnShortcutApply.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnShortcutApplyActionPerformed(evt);
+            }
+        });
+
+        jLabel10.setText("Webcam Title");
+
         javax.swing.GroupLayout panSourcesLayout = new javax.swing.GroupLayout(panSources);
         panSources.setLayout(panSourcesLayout);
         panSourcesLayout.setHorizontalGroup(
@@ -683,13 +765,24 @@ public class Main extends javax.swing.JFrame implements ItemListener {
                             .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 91, Short.MAX_VALUE)
                             .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jLabel7, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addComponent(jLabel7, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel9, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel10, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(cboAudiosMicrophone, 0, 227, Short.MAX_VALUE)
-                            .addComponent(cboAudiosInternal, javax.swing.GroupLayout.Alignment.TRAILING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(cboDisplays, javax.swing.GroupLayout.Alignment.TRAILING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(cboWebcams, javax.swing.GroupLayout.Alignment.TRAILING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addGroup(panSourcesLayout.createSequentialGroup()
+                                .addComponent(chkShortcutControl)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(chkShortcutSHIFT)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(cboShortcutKey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnShortcutApply, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addComponent(cboAudiosMicrophone, javax.swing.GroupLayout.Alignment.LEADING, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(cboAudiosInternal, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(cboDisplays, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(cboWebcams, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(txtWebcamTitle))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(btnSetWebcam, javax.swing.GroupLayout.Alignment.TRAILING)
@@ -717,7 +810,18 @@ public class Main extends javax.swing.JFrame implements ItemListener {
                 .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel7)
                     .addComponent(cboAudiosInternal, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 103, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel9)
+                    .addComponent(chkShortcutControl)
+                    .addComponent(chkShortcutSHIFT)
+                    .addComponent(cboShortcutKey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnShortcutApply))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel10)
+                    .addComponent(txtWebcamTitle, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 37, Short.MAX_VALUE)
                 .addComponent(chkDebugMode)
                 .addContainerGap())
         );
@@ -766,27 +870,27 @@ public class Main extends javax.swing.JFrame implements ItemListener {
         });
         scrollPanelContentText.setViewportView(txtPanelContentText);
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
+        javax.swing.GroupLayout panPanelLayout = new javax.swing.GroupLayout(panPanel);
+        panPanel.setLayout(panPanelLayout);
+        panPanelLayout.setHorizontalGroup(
+            panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(panPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(scrollPanelContentText, javax.swing.GroupLayout.DEFAULT_SIZE, 370, Short.MAX_VALUE)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                    .addGroup(panPanelLayout.createSequentialGroup()
+                        .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                             .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, 80, Short.MAX_VALUE)
                             .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(panPanelLayout.createSequentialGroup()
                                 .addComponent(cboOverlays, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(btnPreviewPanelContent))
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addGroup(panPanelLayout.createSequentialGroup()
+                                .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                     .addComponent(spinPanelWidth, javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(spinShowDurationTime, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 78, Short.MAX_VALUE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -794,20 +898,20 @@ public class Main extends javax.swing.JFrame implements ItemListener {
                                 .addGap(0, 0, Short.MAX_VALUE)))))
                 .addContainerGap())
         );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
+        panPanelLayout.setVerticalGroup(
+            panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(panPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel5)
                     .addComponent(cboOverlays, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnPreviewPanelContent))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel6)
                     .addComponent(spinPanelWidth, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
                     .addComponent(spinShowDurationTime, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel8))
@@ -816,15 +920,24 @@ public class Main extends javax.swing.JFrame implements ItemListener {
                 .addContainerGap())
         );
 
-        tabs.addTab("Panel", jPanel1);
+        tabs.addTab("Panel", panPanel);
 
         getContentPane().add(tabs, java.awt.BorderLayout.CENTER);
 
         panStatusBar.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.RAISED));
-        panStatusBar.setLayout(new javax.swing.BoxLayout(panStatusBar, javax.swing.BoxLayout.LINE_AXIS));
+        panStatusBar.setLayout(new java.awt.GridLayout(1, 2, 0, 3));
 
         lblMessages.setText("Welcome");
         panStatusBar.add(lblMessages);
+
+        lblNotice.setForeground(java.awt.Color.red);
+        lblNotice.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        lblNotice.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                lblNoticeMouseClicked(evt);
+            }
+        });
+        panStatusBar.add(lblNotice);
 
         getContentPane().add(panStatusBar, java.awt.BorderLayout.SOUTH);
 
@@ -866,40 +979,6 @@ public class Main extends javax.swing.JFrame implements ItemListener {
     private void cboDisplaysActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboDisplaysActionPerformed
         updateCurrentConfigurationStatus();
     }//GEN-LAST:event_cboDisplaysActionPerformed
-
-    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-        try {
-            target.format = cboTargets.getSelectedItem().toString();
-            Screen s = (Screen) cboDisplays.getSelectedItem();
-            target.captureX = "" + (int) s.getSize().getX();
-            target.captureY = "" + (int) s.getSize().getY();
-            target.captureWidth = "" + (int) s.getSize().getWidth();
-            target.captureHeight = "" + (int) s.getSize().getHeight();
-            target.framerate = "" + s.getFps();
-            target.size = ((SIZES) cboProfiles.getSelectedItem()).name();
-            target.mainSource = cboDisplays.getSelectedItem().toString();
-            target.mainAudio = cboAudiosMicrophone.getSelectedItem().toString();
-            target.secondAudio = cboAudiosInternal.getSelectedItem().toString();
-            target.showDuration = spinShowDurationTime.getValue().toString();
-            if (cboWebcams.getSelectedIndex() > 0) {
-                Webcam w = (Webcam) cboWebcams.getSelectedItem();
-                target.webcamDevice = w.toString();
-                target.webcamWidth = "" + w.getWidth();
-                target.webcamHeight = "" + w.getHeight();
-                target.webcamOffset = "" + w.getOffset();
-            } else {
-                target.webcamDevice = "";
-            }
-            if (cboOverlays.getSelectedItem() != null) {
-                target.mainOverlay = cboOverlays.getSelectedItem().toString();
-                target.mainOverlayWidth = spinPanelWidth.getValue().toString();
-            }
-            target.panelTextContent = txtPanelContentText.getText();
-            target.saveDefault();
-        } catch (IOException ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }//GEN-LAST:event_formWindowClosing
 
     private void cboWebcamsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboWebcamsActionPerformed
         updateCurrentConfigurationStatus();
@@ -974,7 +1053,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
             if (cboWebcams.getSelectedIndex() > 0) {
                 device = (Webcam) cboWebcams.getSelectedItem();
             }
-            PanelWebcam w = new PanelWebcam(device, (Integer) spinPanelWidth.getValue(), (int) s.getSize().getHeight(), (Integer) spinShowDurationTime.getValue());
+            PanelWebcam w = new PanelWebcam(device, (Integer) spinPanelWidth.getValue(), (int) s.getSize().getHeight(), (Integer) spinShowDurationTime.getValue(), txtWebcamTitle.getText());
             d.add(w, BorderLayout.CENTER);
             File content = (File) cboOverlays.getSelectedItem();
             InputStream in = content.toURI().toURL().openStream();
@@ -983,7 +1062,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
             in.close();
             if (content.getName().endsWith("html")) {
                 //Reading content from a local html file
-                w.setText(new String(data),txtPanelContentText.getText());
+                w.setText(new String(data), txtPanelContentText.getText());
             } else if (content.getName().endsWith("url")) {
                 //Reading content from a webpage...
                 data = new byte[65536];
@@ -997,10 +1076,10 @@ public class Main extends javax.swing.JFrame implements ItemListener {
                     count = in.read(data);
                 }
                 in.close();
-                w.setText(html.toString(),txtPanelContentText.getText());
+                w.setText(html.toString(), txtPanelContentText.getText());
             } else {
                 //Reading raw content from a text file
-                w.setText("<html>" + new String(data).replaceAll("\n", "<br>") + "</html>",txtPanelContentText.getText());
+                w.setText("<html>" + new String(data).replaceAll("\n", "<br>") + "</html>", txtPanelContentText.getText());
             }
             d.setVisible(true);
             w.stop();
@@ -1015,10 +1094,39 @@ public class Main extends javax.swing.JFrame implements ItemListener {
     }//GEN-LAST:event_cboAudiosMicrophoneActionPerformed
 
     private void txtPanelContentTextKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtPanelContentTextKeyTyped
-        if (runningOverlay!=null){
+        if (runningOverlay != null) {
             runningOverlay.setUserTextContent(txtPanelContentText.getText());
         }
     }//GEN-LAST:event_txtPanelContentTextKeyTyped
+
+    private void btnShortcutApplyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnShortcutApplyActionPerformed
+        if (target != null) {
+            target.shortcutKey = "";
+            if (chkShortcutControl.isSelected()) {
+                target.shortcutKey += "control ";
+            }
+            if (chkShortcutSHIFT.isSelected()) {
+                target.shortcutKey += "shift ";
+            }
+            target.shortcutKey += cboShortcutKey.getSelectedItem().toString();
+            initializeShortCuts();
+        }
+    }//GEN-LAST:event_btnShortcutApplyActionPerformed
+
+    private void lblNoticeMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_lblNoticeMouseClicked
+        if (evt.getClickCount() == 2) {
+            if (lblNotice.getText().length() > 0 && Desktop.isDesktopSupported()) {
+                try {
+                    java.net.URL url = new java.net.URL("http://screenstudio.crombz.com");
+                    Desktop.getDesktop().browse(url.toURI());
+                } catch (MalformedURLException ex) {
+                    Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IOException | URISyntaxException ex) {
+                    Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
+    }//GEN-LAST:event_lblNoticeMouseClicked
 
     /**
      * @param args the command line arguments
@@ -1048,6 +1156,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
         java.awt.EventQueue.invokeLater(new Runnable() {
             @Override
             public void run() {
+
                 new Main().setVisible(true);
             }
         });
@@ -1060,15 +1169,20 @@ public class Main extends javax.swing.JFrame implements ItemListener {
     private javax.swing.JButton btnSetProfile;
     private javax.swing.JButton btnSetTarget;
     private javax.swing.JButton btnSetWebcam;
+    private javax.swing.JButton btnShortcutApply;
     private javax.swing.JComboBox cboAudiosInternal;
     private javax.swing.JComboBox cboAudiosMicrophone;
     private javax.swing.JComboBox cboDisplays;
     private javax.swing.JComboBox cboOverlays;
     private javax.swing.JComboBox cboProfiles;
+    private javax.swing.JComboBox cboShortcutKey;
     private javax.swing.JComboBox cboTargets;
     private javax.swing.JComboBox cboWebcams;
     private javax.swing.JCheckBox chkDebugMode;
+    private javax.swing.JCheckBox chkShortcutControl;
+    private javax.swing.JCheckBox chkShortcutSHIFT;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
@@ -1076,12 +1190,14 @@ public class Main extends javax.swing.JFrame implements ItemListener {
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
-    private javax.swing.JPanel jPanel1;
+    private javax.swing.JLabel jLabel9;
     private javax.swing.JLabel lblCurrentTargetConfiguration;
     private javax.swing.JLabel lblMessages;
+    private javax.swing.JLabel lblNotice;
     private javax.swing.JLabel lblProfiles;
     private javax.swing.JLabel lblTargets;
     private javax.swing.JPanel panCapture;
+    private javax.swing.JPanel panPanel;
     private javax.swing.JPanel panSources;
     private javax.swing.JPanel panStatusBar;
     private java.awt.PopupMenu popTrayIcon;
@@ -1093,6 +1209,7 @@ public class Main extends javax.swing.JFrame implements ItemListener {
     private javax.swing.JSpinner spinShowDurationTime;
     private javax.swing.JTabbedPane tabs;
     private javax.swing.JTextArea txtPanelContentText;
+    private javax.swing.JTextField txtWebcamTitle;
     // End of variables declaration//GEN-END:variables
 
     @Override
@@ -1107,5 +1224,27 @@ public class Main extends javax.swing.JFrame implements ItemListener {
                 }
             }
         }
+    }
+
+    @Override
+    public void onHotKey(HotKey hotkey) {
+        String shortcut = "";
+
+        if (hotkey.toString().contains("ctrl")) {
+            shortcut += " control";
+        }
+        if (hotkey.toString().contains("alt")) {
+            shortcut += " alt";
+        }
+        if (hotkey.toString().contains("shift")) {
+            shortcut += " shift";
+        }
+        shortcut += " " + KeyEvent.getKeyText(hotkey.keyStroke.getKeyCode());
+
+        shortcut = shortcut.trim().toUpperCase().replaceAll("  ", " ");
+        if (shortcut.equals(target.shortcutKey.toUpperCase())) {
+            btnCapture.doClick();
+        }
+
     }
 }
