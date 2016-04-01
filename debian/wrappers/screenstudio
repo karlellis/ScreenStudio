@@ -6,7 +6,7 @@
 # Version 1.0
 
 # Set the working directory
-DIR=/usr/lib/screenstudio
+DIR=/usr/lib/ScreenStudio
 
 # Run the application
 cd $DIR
