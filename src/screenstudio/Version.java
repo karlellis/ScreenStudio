@@ -16,42 +16,6 @@
  */
 package screenstudio;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import screenstudio.sources.Screen;
-
 public class Version{
-    public final static String MAIN = "2.0.5";
-    
-    public static boolean hasNewVersion(){
-        boolean retValue = false;
-        System.out.println("Checking for newest version...");
-        try {
-            String path = "http://screenstudio.crombz.com/archives/ubuntu/ubuntu.last.version";
-            if (Screen.isOSX()){
-                path = "http://screenstudio.crombz.com/archives/osx/osx.last.version";
-            }
-            URL url = new URL(path);
-            InputStream in = url.openStream();
-            String data = "";
-            byte[] buffer = new byte[50];
-            int count = in.read(buffer);
-            while (count > 0){
-                data += new String(buffer,0,count);
-                count = in.read(buffer);
-            }
-            retValue = !MAIN.equals(data.trim());
-            System.out.println("Version "+data.trim()+" is available ...");
-            in.close();
-        } catch (MalformedURLException ex) {
-            Logger.getLogger(Version.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            System.out.println("Version is the latest...");
-        }
-        return retValue;
-    }
+    public final static String MAIN = "2.0.2";
 }

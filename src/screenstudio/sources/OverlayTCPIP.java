@@ -38,6 +38,7 @@ public class OverlayTCPIP implements Runnable {
     private long mFPS = 10;
     private boolean stopMe = false;
     private boolean mIsRunning = false;
+    private boolean mIsDrawing = false;
 
     public OverlayTCPIP(PanelWebcam panel, long fps) throws IOException, InterruptedException {
         mPanel = panel;
@@ -86,8 +87,10 @@ public class OverlayTCPIP implements Runnable {
             while (!stopMe && output != null) {
                 nextTimeStamp = System.currentTimeMillis() + (1000 / (mFPS));
                 try {
-                    if (!mPanel.IsUpdating()) {
+                    if (!mPanel.IsUpdating()){
+                        mIsDrawing = true;
                         mPanel.paint(g);
+                        mIsDrawing = false;
                     }
                 } catch (Exception e) {
                     //Do nothing if painting failed...
@@ -126,7 +129,7 @@ public class OverlayTCPIP implements Runnable {
         }
         mIsRunning = false;
     }
-    
+
     public void stop() {
         stopMe = true;
     }
