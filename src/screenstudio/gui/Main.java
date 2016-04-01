@@ -73,15 +73,17 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
     //Shortcut key handler
     private Provider keyShortcuts = null;
     private boolean isLoading = false;
+    private File mConfig = null;
 
     /**
      * Creates new form Main
      */
-    public Main() {
+    public Main(File config) {
         initComponents();
+        mConfig = config;
         isLoading = true;
         try {
-            target.loadDefault();
+            target.loadDefault(mConfig);
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -239,11 +241,11 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
         initializeShortCuts();
 
         txtWebcamTitle.setText(target.webcamTitle);
+        chkDoNotHide.setSelected(target.doNotHide.equals("true"));
     }
 
     private void initializeShortCuts() {
         final Main instance = this;
-
         new Thread(() -> {
             try {
                 if (keyShortcuts == null) {
@@ -259,7 +261,6 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
     }
 
     private void stopShortcuts() {
-        final Main instance = this;
         new Thread(() -> {
             try {
                 if (keyShortcuts != null) {
@@ -442,7 +443,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
         }
         System.out.println(message);
         lblMessages.setText(message);
-        if (trayIcon == null) {
+        if (trayIcon == null || target.doNotHide.equals("true")) {
             this.setExtendedState(JFrame.NORMAL);
         } else {
             this.setVisible(true);
@@ -545,6 +546,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
         btnShortcutApply = new javax.swing.JButton();
         jLabel10 = new javax.swing.JLabel();
         txtWebcamTitle = new javax.swing.JTextField();
+        chkDoNotHide = new javax.swing.JCheckBox();
         panPanel = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
         cboOverlays = new javax.swing.JComboBox();
@@ -676,7 +678,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                     .addComponent(cboProfiles, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnSetProfile))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(lblCurrentTargetConfiguration, javax.swing.GroupLayout.DEFAULT_SIZE, 146, Short.MAX_VALUE)
+                .addComponent(lblCurrentTargetConfiguration, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(btnCapture)
                 .addContainerGap())
@@ -755,6 +757,13 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
         jLabel10.setText("Webcam Title");
 
+        chkDoNotHide.setText("Do not hide");
+        chkDoNotHide.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                chkDoNotHideActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout panSourcesLayout = new javax.swing.GroupLayout(panSources);
         panSources.setLayout(panSourcesLayout);
         panSourcesLayout.setHorizontalGroup(
@@ -762,9 +771,6 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
             .addGroup(panSourcesLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panSourcesLayout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(chkDebugMode))
                     .addGroup(panSourcesLayout.createSequentialGroup()
                         .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                             .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 91, Short.MAX_VALUE)
@@ -791,7 +797,12 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(btnSetWebcam, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(btnSetDisplay, javax.swing.GroupLayout.Alignment.TRAILING))))
+                            .addComponent(btnSetDisplay, javax.swing.GroupLayout.Alignment.TRAILING)))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panSourcesLayout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(chkDoNotHide)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(chkDebugMode)))
                 .addContainerGap())
         );
         panSourcesLayout.setVerticalGroup(
@@ -826,8 +837,10 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                 .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel10)
                     .addComponent(txtWebcamTitle, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(chkDebugMode)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 42, Short.MAX_VALUE)
+                .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(chkDebugMode)
+                    .addComponent(chkDoNotHide))
                 .addContainerGap())
         );
 
@@ -852,10 +865,10 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
         jLabel6.setText("Panel Width");
 
-        spinPanelWidth.setModel(new javax.swing.SpinnerNumberModel(320, null, null, 10));
+        spinPanelWidth.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(320), null, null, Integer.valueOf(10)));
         spinPanelWidth.setEditor(new javax.swing.JSpinner.NumberEditor(spinPanelWidth, ""));
 
-        spinShowDurationTime.setModel(new javax.swing.SpinnerNumberModel(30, 0, null, 15));
+        spinShowDurationTime.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(30), Integer.valueOf(0), null, Integer.valueOf(15)));
 
         jLabel1.setText("Duration");
 
@@ -921,7 +934,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                     .addComponent(spinShowDurationTime, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel8))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(scrollPanelContentText, javax.swing.GroupLayout.DEFAULT_SIZE, 146, Short.MAX_VALUE)
+                .addComponent(scrollPanelContentText, javax.swing.GroupLayout.DEFAULT_SIZE, 151, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -955,7 +968,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
             stopStream("Stopped...");
         } else {
             try {
-                if (trayIcon == null) {
+                if (trayIcon == null || target.doNotHide.equals("true")) {
                     this.setExtendedState(JFrame.ICONIFIED);
                 } else {
                     this.setVisible(false);
@@ -1161,11 +1174,21 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                 target.mainOverlayWidth = spinPanelWidth.getValue().toString();
             }
             target.panelTextContent = txtPanelContentText.getText();
-            target.saveDefault();
+            target.webcamTitle = txtWebcamTitle.getText();
+            target.saveDefault(mConfig);
+            stopShortcuts();
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }
     }//GEN-LAST:event_formWindowClosing
+
+    private void chkDoNotHideActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chkDoNotHideActionPerformed
+        if (chkDoNotHide.isSelected()){
+            target.doNotHide = "true";
+        } else {
+            target.doNotHide = "false";
+        }
+    }//GEN-LAST:event_chkDoNotHideActionPerformed
 
     /**
      * @param args the command line arguments
@@ -1190,15 +1213,25 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
         //</editor-fold>
 
         //</editor-fold>
+        if (args.length >= 1) {
+            /* Create and display the form */
+            java.awt.EventQueue.invokeLater(new Runnable() {
+                @Override
+                public void run() {
 
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            @Override
-            public void run() {
+                    new Main(new File(args[0])).setVisible(true);
+                }
+            });
+        } else {
+            /* Create and display the form */
+            java.awt.EventQueue.invokeLater(new Runnable() {
+                @Override
+                public void run() {
 
-                new Main().setVisible(true);
-            }
-        });
+                    new Main(null).setVisible(true);
+                }
+            });
+        }
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -1218,6 +1251,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
     private javax.swing.JComboBox cboTargets;
     private javax.swing.JComboBox cboWebcams;
     private javax.swing.JCheckBox chkDebugMode;
+    private javax.swing.JCheckBox chkDoNotHide;
     private javax.swing.JCheckBox chkShortcutControl;
     private javax.swing.JCheckBox chkShortcutSHIFT;
     private javax.swing.JLabel jLabel1;

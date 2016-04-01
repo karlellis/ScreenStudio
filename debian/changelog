@@ -1,3 +1,11 @@
+screenstudio (2.0.5) trusty; urgency=medium
+
+  * Adds: "Do not hide" Option
+  * Fixes: Fixed a small bug as settings were not saved when closing.﻿
+  * Changes: Other minor tweaks...
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Fri, 01 Apr 2016 17:21:10 +0200
+
 screenstudio (2.0.3) trusty; urgency=medium
 
   * Adds: Shortcuts are back

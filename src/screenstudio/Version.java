@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 import screenstudio.sources.Screen;
 
 public class Version{
-    public final static String MAIN = "2.0.3";
+    public final static String MAIN = "2.0.5";
     
     public static boolean hasNewVersion(){
         boolean retValue = false;
