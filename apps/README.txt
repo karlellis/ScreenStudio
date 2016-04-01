@@ -46,11 +46,15 @@ The SOURCES will let you select the different sources to use for a local recordi
 - Webcam: Select the proper webcam to use.  "None" will not use any webcam.
 - Microphone:  Select the microphone (audio input) to use.  
 - Internal:  Select the internal audio monitor to use.  This is the input that will be used to capture the audio from your computer
+- Webcam Title: A text that will be displayed at the top of your webcam.
+- Debug mode:  When activated, the console will show all the output from FFMpeg.
+
+- PANEL
+
+This is where you configure your side panel.
 - Panel:  Select the panel overlay you wish to use.  This is a list of the files found in the "Overlays" sub-folder
 - Panel Width:  Set the with of the panel overlay to use.  It should match the width of your webcam format for best results
 - Duration:  Enter your expected streaming duration.  This is used with Overlays to display the remaining time.
-- Debug mode:  When activated, the console will show all the output from FFMpeg.
-
 
 - PANEL AND OVERLAYS
 
