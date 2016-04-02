@@ -16,7 +16,6 @@
  */
 package screenstudio.sources;
 
-import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
@@ -39,7 +38,6 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
     private final int mWidth;
     private final int mHeight;
     private BufferedImage buffer;
-    private final String mTitle;
     private boolean stopMe = false;
 
     /**
@@ -49,12 +47,11 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
      * @param width
      * @param height
      */
-    public WebcamViewer(File device, int width, int height, String title) {
+    public WebcamViewer(File device, int width, int height) {
         initComponents();
         mDevice = device;
         mWidth = width;
         mHeight = height;
-        mTitle = title;
         this.setSize(width, height);
         buffer = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
         this.setDoubleBuffered(true);
@@ -65,21 +62,8 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
     }
 
     @Override
-    public void paintComponent(Graphics g) {
-        super.paintComponent(g);
+    public void paint(Graphics g) {
         g.drawImage(buffer, 0, 0, this);
-        if (mTitle.trim().length() > 0) {
-            g.setFont(this.getFont());
-            int strW = (int) g.getFontMetrics().getStringBounds(mTitle, g).getWidth();
-            int strH = (int) g.getFontMetrics().getStringBounds(mTitle, g).getHeight();
-            g.setColor(Color.WHITE);
-            g.setXORMode(Color.BLACK);
-            //g.fillRect((getWidth() / 2) - (strW / 2) - 3, 0, strW + 6, strH + 3);
-            g.fillRect(0, 0, getWidth(), strH + 3);
-            g.setColor(Color.WHITE);
-            g.setPaintMode();
-            g.drawString(mTitle, (getWidth() / 2) - (strW / 2), strH);
-        }
     }
 
     /**
@@ -90,8 +74,6 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-
-        setFont(new java.awt.Font("DejaVu Sans", 1, 10)); // NOI18N
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -127,7 +109,7 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
                         p.load(in);
                     }
                     webcamFormat = p.getProperty("WEBCAMFORMAT", webcamFormat);
-
+                    
                 } catch (MalformedURLException ex) {
                     Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (IOException ex) {

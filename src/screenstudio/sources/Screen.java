@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Patrick Balleux
+ * Copyright (C) 2014 Patrick Balleux
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,29 +54,12 @@ public class Screen {
             GraphicsEnvironment g = GraphicsEnvironment.getLocalGraphicsEnvironment();
             GraphicsDevice[] devices = g.getScreenDevices();
             int i = 1;
-            double maxWidth = 0;
-            double maxHeight = 9999;
             for (GraphicsDevice d : devices) {
                 System.out.println(d.getIDstring() + " " + d.getDefaultConfiguration().getBounds().toString().replaceAll("java.awt.Rectangle", ""));
                 Screen s = new Screen();
-                s.setId(":0.0");
+                s.setId(d.getIDstring());
                 s.setScreenIndex(i++);
                 s.setSize(d.getDefaultConfiguration().getBounds());
-                //Assuming screens are side by side
-                maxWidth += s.getSize().getWidth();
-                //If we have one that has less height than the other
-                if (maxHeight > s.getSize().getHeight()){
-                    maxHeight = s.getSize().getHeight();
-                }
-                list.add(s);
-            }
-            if (list.size()>1){
-                //We have more than one screen
-                // Creating full screen capture...
-                Screen s = new Screen();
-                s.setId(":0.0");
-                s.setScreenIndex(i++);
-                s.setSize(new Rectangle(0, 0, (int)maxWidth, (int)maxHeight));
                 list.add(s);
             }
         }
