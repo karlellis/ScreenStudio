@@ -37,3 +37,5 @@ DEB_JARS := AppFramework \
   slf4j-api \
   slf4j-log4j12 \
   swing-worker
+
+install/screenstudio::

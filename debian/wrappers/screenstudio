@@ -6,8 +6,13 @@
 # Version 1.0
 
 # Set the working directory
-DIR=/usr/lib/screenstudio
+INSTALLDIR=/usr/lib/screenstudio
+
+JAVA_CLASSPATH="${INSTALLDIR}/*:${INSTALLDIR}/lib/*"
+
+find_java_runtime openjdk sunmin5
 
 # Run the application
-cd $DIR
+cd ${INSTALLDIR}
+
 java -jar ScreenStudio.jar
