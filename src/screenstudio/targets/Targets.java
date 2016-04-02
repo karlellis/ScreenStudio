@@ -113,15 +113,21 @@ public class Targets {
     public String webcamWidth = "320";
     public String webcamHeight = "240";
     public String webcamOffset = "0.0";
+    public String webcamTitle = "";
     public String outputPreset = "ultrafast";
     public String outputVideoBitrate = "9000";
     public String showDuration = "60";
     public String panelTextContent = "";
+    public String shortcutKey = "control shift R";
+    public String doNotHide = "false";
 // </editor-fold>
 
-    public void saveDefault() throws IOException {
+    public void saveDefault(File config) throws IOException {
+        if (config == null){
+            config = new File("screenstudio.properties");
+        }
         java.util.Properties props = new java.util.Properties();
-        FileWriter out = new FileWriter("screenstudio.properties");
+        FileWriter out = new FileWriter(config);
         for (Field f : this.getClass().getDeclaredFields()) {
             try {
                 if (f.get(this) != null) {
@@ -137,9 +143,12 @@ public class Targets {
         out.close();
     }
 
-    public void loadDefault() throws FileNotFoundException, IOException {
-        if (new File("screenstudio.properties").exists()) {
-            FileReader in = new FileReader("screenstudio.properties");
+    public void loadDefault(File config) throws FileNotFoundException, IOException {
+        if (config == null){
+            config = new File("screenstudio.properties");
+        }
+        if (config.exists()) {
+            FileReader in = new FileReader(config);
             java.util.Properties props = new java.util.Properties();
             props.load(in);
             for (Field f : this.getClass().getDeclaredFields()) {
