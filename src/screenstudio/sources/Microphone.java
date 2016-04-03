@@ -158,7 +158,7 @@ public class Microphone {
 
     private static ArrayList<Microphone> getOSXDevices() throws IOException, InterruptedException {
         ArrayList<Microphone> list = new ArrayList<>();
-        String command = "./ffmpeg -list_devices true -f avfoundation -i dummy";
+        String command = "./FFMPEG/ffmpeg-osx -list_devices true -f avfoundation -i dummy";
         String line = "";
         System.out.println(command);
         Process p = Runtime.getRuntime().exec(command);
@@ -178,7 +178,7 @@ public class Microphone {
                     for (int i = parts.length - 1; i >= 0; i--) {
                         if (parts[i].startsWith("[")) {
                             // reached device id
-                            m.device = parts[i].substring(1, parts[i].length() - 1);
+                            m.device = ":"+parts[i].substring(1, parts[i].length() - 1);
                             break;
                         } else {
                             m.description = parts[i] + " " + m.description;

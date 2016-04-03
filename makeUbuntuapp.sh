@@ -26,7 +26,7 @@ cp apps/logo.png ScreenStudio.Ubuntu/Overlays/logo.png
 cp apps/Ubuntu/ScreenStudio.sh ScreenStudio.Ubuntu/ScreenStudio.sh
 cp apps/README.txt ScreenStudio.Ubuntu/README.txt
 cp RTMP/* ScreenStudio.Ubuntu/RTMP
-cp FFMPEG/* ScreenStudio.Ubuntu/FFMPEG
+cp FFMPEG/default.properties ScreenStudio.Ubuntu/FFMPEG
 cp libs/* ScreenStudio.Ubuntu/lib
 sed "s/@VERSION/$VERSION/g" apps/Ubuntu/createDesktopIcon.sh>ScreenStudio.Ubuntu/createDesktopIcon.sh
 chmod +x ScreenStudio.Ubuntu/createDesktopIcon.sh

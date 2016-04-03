@@ -27,6 +27,7 @@ import java.net.MalformedURLException;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import screenstudio.encoder.FFMpeg;
 
 /**
  *
@@ -116,6 +117,7 @@ public class Targets {
     public String webcamTitle = "";
     public String outputPreset = "ultrafast";
     public String outputVideoBitrate = "9000";
+    public String outputAudioRate = "Audio22K";
     public String showDuration = "60";
     public String panelTextContent = "";
     public String shortcutKey = "control shift R";
@@ -124,7 +126,7 @@ public class Targets {
 
     public void saveDefault(File config) throws IOException {
         if (config == null){
-            config = new File("screenstudio.properties");
+            config = new File(new FFMpeg().getHome(),"screenstudio.properties");
         }
         java.util.Properties props = new java.util.Properties();
         FileWriter out = new FileWriter(config);
@@ -145,7 +147,7 @@ public class Targets {
 
     public void loadDefault(File config) throws FileNotFoundException, IOException {
         if (config == null){
-            config = new File("screenstudio.properties");
+            config = new File(new FFMpeg().getHome(),"screenstudio.properties");
         }
         if (config.exists()) {
             FileReader in = new FileReader(config);

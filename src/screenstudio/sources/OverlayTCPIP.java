@@ -19,6 +19,7 @@ package screenstudio.sources;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -56,26 +57,27 @@ public class OverlayTCPIP implements Runnable {
 
     }
 
+    public boolean isRunning(){
+        return mIsRunning;
+    }
     @Override
     public void run() {
         mIsRunning = true;
         stopMe = false;
-        java.io.OutputStream output = null;
-
+        java.io.DataOutputStream out = null;
         try {
             // Pipe created. so we need to paint
             // the panel in the fifo each x ms seconds..
-            long nextTimeStamp;
-            long delay;
             // Use a BGR 24 bits images as ffmpeg will read  -pix_format BGR24
             BufferedImage img = new BufferedImage(mPanel.getWidth(), mPanel.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
             //waiting for connection...
-            while (!stopMe && output == null) {
+            while (!stopMe && out == null) {
                 try {
                     System.out.println("Waiting for connection...");
                     Socket s = server.accept();
                     System.out.println("Got connection...");
-                    output = s.getOutputStream();
+                    s.setSendBufferSize(img.getWidth()*img.getHeight()*3);
+                    out = new DataOutputStream(s.getOutputStream());
                 } catch (java.net.SocketTimeoutException ex) {
                     //do nothing...
                 }
@@ -83,8 +85,8 @@ public class OverlayTCPIP implements Runnable {
             mPanel.doLayout();
             Graphics g = img.getGraphics();
             byte[] imageBytes = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
-            while (!stopMe && output != null) {
-                nextTimeStamp = System.currentTimeMillis() + (1000 / (mFPS));
+            long nextPTS = System.currentTimeMillis() + (1000/mFPS);
+            while (!stopMe && out != null) {
                 try {
                     if (!mPanel.IsUpdating()) {
                         mPanel.paint(g);
@@ -93,28 +95,29 @@ public class OverlayTCPIP implements Runnable {
                     //Do nothing if painting failed...
                     System.err.println("Error painting overlay..." + e.getMessage());
                 }
-                output.write(imageBytes);
-                //Try to sleep just what is needed to keep a constant fps
-                delay = nextTimeStamp - System.currentTimeMillis();
-                if (delay > 0) {
-                    Thread.sleep(delay);
+                out.write(imageBytes);
+                long delta = nextPTS - System.currentTimeMillis();
+                if (delta > 0){
+                    try {
+                        Thread.sleep(delta-1);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(OverlayTCPIP.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 }
+                nextPTS += (1000 / mFPS);
             }
             g.dispose();
-            if (output != null) {
-                output.close();
+            if (out != null) {
+                out.close();
             }
         } catch (IOException ex) {
-            //Logger.getLogger(OverlayTCPIP.class.getName()).log(Level.SEVERE, null, ex);
-            if (output != null) {
+            if (out != null) {
                 try {
-                    output.close();
+                    out.close();
                 } catch (IOException ex1) {
                     Logger.getLogger(OverlayTCPIP.class.getName()).log(Level.SEVERE, null, ex1);
                 }
             }
-        } catch (InterruptedException ex) {
-            Logger.getLogger(OverlayTCPIP.class.getName()).log(Level.SEVERE, null, ex);
         }
         if (server != null) {
             try {
@@ -129,9 +132,5 @@ public class OverlayTCPIP implements Runnable {
     
     public void stop() {
         stopMe = true;
-    }
-
-    public boolean isRunning() {
-        return mIsRunning;
     }
 }

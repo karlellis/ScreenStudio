@@ -40,6 +40,7 @@ public class FFMpeg {
      * List of supported presets for FFMPEG
      */
     public enum Presets {
+
         ultrafast,
         superfast,
         veryfast,
@@ -55,6 +56,8 @@ public class FFMpeg {
      * Supported audio rate for output
      */
     public enum AudioRate {
+        Audio11K,
+        Audio22K,
         Audio44K,
         Audio48K
     }
@@ -89,6 +92,8 @@ public class FFMpeg {
     private String outputHeight = "480";
     private File defaultCaptureFolder = new File(".");
     private String output = "Capture/capture.mp4";
+    private File mHome = new File(".");
+    
 
     private Rectangle overlaySetting = new Rectangle(0, 0);
 
@@ -97,16 +102,20 @@ public class FFMpeg {
      */
     public FFMpeg() {
         //Creating default folder for capturing videos...
-        initDefaults();
         defaultCaptureFolder = new File("Capture");
+        initDefaults();
         if (!defaultCaptureFolder.exists()) {
             defaultCaptureFolder.mkdir();
         }
         output = new File(defaultCaptureFolder, "capture.flv").getAbsolutePath();
     }
 
+    public File getHome(){
+        return mHome;
+    }
     /**
      * Set the audio parameters
+     *
      * @param rate : Audio rate for the output
      * @param input : device to use
      */
@@ -118,12 +127,19 @@ public class FFMpeg {
             case Audio48K:
                 audioRate = "48000";
                 break;
+            case Audio22K:
+                audioRate = "22050";
+                break;
+            case Audio11K:
+                audioRate = "11025";
+                break;
         }
         audioInput = input;
     }
 
     /**
      * Set the Overlay to use
+     *
      * @param overlay
      */
     public void setOverlay(Overlay overlay) {
@@ -136,7 +152,8 @@ public class FFMpeg {
     }
 
     /**
-     * Set the capture format to use 
+     * Set the capture format to use
+     *
      * @param device : The display
      * @param capX : The left location
      * @param capY : The top location
@@ -149,6 +166,7 @@ public class FFMpeg {
 
     /**
      * Set the output format of the video file/stream
+     *
      * @param format
      * @param target
      */
@@ -162,7 +180,7 @@ public class FFMpeg {
                 break;
             case MP4:
                 muxer = "mp4";
-                videoEncoder = "libx264";
+                videoEncoder = "mpeg4";
                 audioEncoder = "aac";
                 output = new File(defaultCaptureFolder, generateRandomName() + ".mp4").getAbsolutePath();
                 break;
@@ -206,6 +224,7 @@ public class FFMpeg {
 
     /**
      * Set the audio bitate
+     *
      * @param rate
      */
     public void setAudioBitrate(int rate) {
@@ -214,6 +233,7 @@ public class FFMpeg {
 
     /**
      * Set the video bitrate
+     *
      * @param rate
      */
     public void setVideoBitrate(int rate) {
@@ -222,6 +242,7 @@ public class FFMpeg {
 
     /**
      * Set the capture framerate for the display
+     *
      * @param rate
      */
     public void setFramerate(int rate) {
@@ -230,6 +251,7 @@ public class FFMpeg {
 
     /**
      * Set the preset to use for the encording
+     *
      * @param p
      */
     public void setPreset(Presets p) {
@@ -238,6 +260,7 @@ public class FFMpeg {
 
     /**
      * Set the output size of the video/stream encoding
+     *
      * @param capWidth
      * @param capHeight
      * @param size
@@ -290,6 +313,7 @@ public class FFMpeg {
 
     /**
      * Set the output file to use
+     *
      * @param out
      */
     public void setOutput(File out) {
@@ -298,6 +322,7 @@ public class FFMpeg {
 
     /**
      * Get the output file being used
+     *
      * @return
      */
     public String getOutput() {
@@ -306,6 +331,7 @@ public class FFMpeg {
 
     /**
      * Generate a random name for the video file
+     *
      * @return
      */
     public String generateRandomName() {
@@ -315,6 +341,7 @@ public class FFMpeg {
 
     /**
      * Build the complete FFMpeg command from this object instance
+     *
      * @param debugMode : If enabled, verbose mode is activated
      * @return the full command for FFMpeg
      */
@@ -326,28 +353,38 @@ public class FFMpeg {
         if (!debugMode) {
             c.append(nonVerboseMode);
         }
-        // Capture Desktop
-        c.append(" -video_size ").append(captureWidth).append("x").append(captureHeight);
-        c.append(" -framerate ").append(framerate);
-        c.append(" -f ").append(mainFormat).append(" -i ").append(mainInput);
-        if (captureX.length() > 0) {
-            c.append("+").append(captureX).append(",").append(captureY);
+        if (overlayInput.length() > 0) {
+            int w = (int) overlaySetting.getWidth();
+            int h = (int) overlaySetting.getHeight();
         }
+        // Capture Desktop
+        if (!Screen.isOSX()) {
+            c.append(" -video_size ").append(captureWidth).append("x").append(captureHeight);
+            c.append(" -framerate ").append(framerate);
+        } else {
+            c.append(" -r ").append(framerate);
+        }
+        c.append(" -f ").append(mainFormat).append(" -i ").append(mainInput);
+
+        if (!Screen.isOSX()) {
+            if (captureX.length() > 0) {
+                c.append("+").append(captureX).append(",").append(captureY);
+            }
+        }
+        // Capture Audio
+        c.append(" -f ").append(audioFormat).append(" -i ").append(audioInput);
         // Capture Overlay Panel
         if (overlayInput.length() > 0) {
-            int x = (int) overlaySetting.getX();
-            int y = (int) overlaySetting.getY();
             int w = (int) overlaySetting.getWidth();
             int h = (int) overlaySetting.getHeight();
             c.append(" -f ").append(overlayFormat);
             c.append(" -framerate ").append(framerate);
             c.append(" -video_size ").append(w).append("x").append(h);
             c.append(" -i ").append(overlayInput);
-            c.append(" -filter_complex [0:v]pad=iw+").append(w).append(":ih[desk];[desk][1:v]overlay=main_w-overlay_w:0");
-        }
-        // Capture Audio
-        c.append(" -f ").append(audioFormat).append(" -i ").append(audioInput);
-        
+            c.append(" -filter_complex [0:v]pad=iw+").append(w).append(":ih[desk];[desk][2:v]overlay=main_w-overlay_w:0");
+
+        }//setpts=PTS-STARTPTS+7/TB[v1]
+
         // Enabled strict settings
         if (strictSetting.length() > 0) {
             c.append(" -strict ").append(strictSetting);
@@ -356,7 +393,7 @@ public class FFMpeg {
         c.append(" -r ").append(framerate);
         c.append(" -s ").append(outputWidth).append("x").append(outputHeight);
         c.append(" -vb ").append(videoBitrate).append("k");
-        if (output.startsWith("rtmp://")){
+        if (output.startsWith("rtmp://")) {
             c.append(" -minrate ").append(videoBitrate).append("k -maxrate ").append(videoBitrate).append("k ");
         }
         c.append(" -ab ").append(audioBitrate).append("k").append(" -ar ").append(audioRate);
@@ -369,7 +406,9 @@ public class FFMpeg {
         c.append(buffer).append(" -f ").append(muxer).append(" ");
         c.append(output);
         // Set proper output
-        if (debugMode) System.out.println(c.toString());
+        if (debugMode) {
+            System.out.println(c.toString());
+        }
         return c.toString();
     }
 
@@ -397,6 +436,13 @@ public class FFMpeg {
                     audioFormat = p.getProperty("AUDIOFORMAT", "pulse") + " ";
                     //Output
                     strictSetting = p.getProperty("STRICTSETTINGS", "-2") + " ";
+                    //HOME
+                    mHome = new File(p.getProperty("HOME", ".").replaceAll("~",System.getProperty("user.home")));
+                    if (!mHome.exists()){
+                        mHome.mkdirs();
+                    }
+                    defaultCaptureFolder = new File(mHome, "Capture");
+
                 } catch (MalformedURLException ex) {
                     Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (IOException ex) {

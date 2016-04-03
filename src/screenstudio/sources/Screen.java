@@ -185,7 +185,7 @@ public class Screen {
 
     private static ArrayList<Screen> getOSXDevices() throws IOException, InterruptedException {
         ArrayList<Screen> list = new ArrayList<>();
-        String command = "./ffmpeg -list_devices true -f avfoundation -i dummy";
+        String command = "./FFMPEG/ffmpeg-osx -list_devices true -f avfoundation -i dummy";
         String line = "";
         System.out.println(command);
         Process p = Runtime.getRuntime().exec(command);
@@ -217,7 +217,7 @@ public class Screen {
                         for (int i = parts.length - 1; i >= 0; i--) {
                             if (parts[i].startsWith("[")) {
                                 // reached device id
-                                s.id = parts[i].substring(1, parts[i].length() - 1);
+                                s.id = parts[i].substring(1, parts[i].length() - 1)+":";
                                 break;
                             }
                         }

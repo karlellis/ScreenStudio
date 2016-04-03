@@ -108,7 +108,7 @@ public class Webcam {
 
     private static ArrayList<Webcam> getOSXDevices() throws IOException, InterruptedException {
         ArrayList<Webcam> list = new ArrayList<Webcam>();
-        String command = "./ffmpeg -list_devices true -f avfoundation -i dummy";
+        String command = "./FFMPEG/ffmpeg-osx -list_devices true -f avfoundation -i dummy";
         String line = "";
         System.out.println(command);
         Process p = Runtime.getRuntime().exec(command);
@@ -130,7 +130,7 @@ public class Webcam {
                         for (int i = parts.length - 1; i >= 0; i--) {
                             if (parts[i].startsWith("[")) {
                                 // reached device id
-                                w.device = parts[i].substring(1, parts[i].length() - 1);
+                                w.device = parts[i].substring(1, parts[i].length() - 1)+":";
                                 break;
                             } else {
                                 w.id = parts[i] + " " + w.id;

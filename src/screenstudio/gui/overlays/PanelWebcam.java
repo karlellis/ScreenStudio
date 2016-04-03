@@ -17,10 +17,13 @@
 package screenstudio.gui.overlays;
 
 import java.awt.BorderLayout;
+import java.awt.Graphics;
 import java.io.File;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import screenstudio.sources.WebcamViewer;
 
 /**
@@ -30,11 +33,12 @@ import screenstudio.sources.WebcamViewer;
 public class PanelWebcam extends javax.swing.JPanel implements TextContent {
 
     private final WebcamViewer mViewer;
-    
     private final long startingTime;
     private final long showEndTime;
     private boolean mIsUpdating = false;
-    
+    private boolean mStopMe = false;
+    private String mText = "";
+
     /**
      * Creates new form PanelWebcam
      *
@@ -43,12 +47,12 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
      * @param height
      * @param showDuration
      */
-    public PanelWebcam(screenstudio.sources.Webcam webcam, int width, int height,int showDuration, String webcamTitle ) {
+    public PanelWebcam(screenstudio.sources.Webcam webcam, int width, int height, int showDuration, String webcamTitle) {
         initComponents();
-        startingTime=System.currentTimeMillis();
+        startingTime = System.currentTimeMillis();
         showEndTime = System.currentTimeMillis() + (showDuration * 60000);
         if (webcam != null) {
-            mViewer = new WebcamViewer(new File(webcam.getDevice()), webcam.getWidth(), webcam.getHeight(),webcamTitle);
+            mViewer = new WebcamViewer(new File(webcam.getDevice()), webcam.getWidth(), webcam.getHeight(), webcamTitle, webcam.getFps());
             mViewer.setOpaque(true);
             panWebcam.setOpaque(true);
             panWebcam.add(mViewer, BorderLayout.CENTER);
@@ -60,7 +64,7 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
             this.revalidate();
             this.doLayout();
         }
-        String tips  = "<H1>Supported tags</H1>";
+        String tips = "<H1>Supported tags</H1>";
         tips += "<ul>";
         tips += "<li>@CURRENTDATE (Current date)</li>";
         tips += "<li>@CURRENTTIME (Current time)</li>";
@@ -69,37 +73,67 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
         tips += "<li>@REMAININGTIME (Time remaining in minutes)</li>";
         tips += "<li>@TEXT (Custom text from the text entry in the Panel tab...)</li>";
         tips += "</ul>";
-        this.setToolTipText("<html>"+tips+"</html>");
-        
+        this.setToolTipText("<html>" + tips + "</html>");
+
     }
 
-    public boolean IsUpdating(){
+    public boolean IsUpdating() {
         return mIsUpdating;
     }
+
     public void stop() {
+        mStopMe = true;
         if (mViewer != null) {
             mViewer.stop();
         }
     }
+
+    public void startPreview() {
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+
+                mStopMe = false;
+                while (!mStopMe) {
+                    repaint();
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(PanelWebcam.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+
+            }
+        }).start();
+    }
+
     @Override
-    public void setText(String text,String userTextContent) {
+    public void paint(Graphics g) {
+        lblText.setText(replaceTags(mText));
+        super.paint(g);
+    }
+
+    @Override
+    public void setText(String text, String userTextContent) {
         mIsUpdating = true;
-        lblText.setText(replaceTags(text).replaceAll("@TEXT",userTextContent));
-        lblText.repaint();
+        mText = text.replaceAll("@TEXT", userTextContent);
         mIsUpdating = false;
     }
 
-    private DateFormat formatDate = DateFormat.getDateInstance(DateFormat.SHORT,Locale.getDefault());
-    private DateFormat formatTime = DateFormat.getTimeInstance(DateFormat.LONG,Locale.getDefault());
-    private String replaceTags(String text){
-        String retValue = text+"";
+    private DateFormat formatDate = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
+    private DateFormat formatTime = DateFormat.getTimeInstance(DateFormat.LONG, Locale.getDefault());
+
+    private String replaceTags(String text) {
+        String retValue = text + "";
         retValue = retValue.replaceAll("@CURRENTDATE", formatDate.format(new Date()));
         retValue = retValue.replaceAll("@CURRENTTIME", formatTime.format(new Date()));
-        retValue = retValue.replaceAll("@RECORDINGTIME", (System.currentTimeMillis()-startingTime)/60000 + " min");
+        retValue = retValue.replaceAll("@RECORDINGTIME", (System.currentTimeMillis() - startingTime) / 60000 + " min");
         retValue = retValue.replaceAll("@STARTTIME", formatTime.format(new Date(startingTime)));
-        retValue = retValue.replaceAll("@REMAININGTIME", (((showEndTime - System.currentTimeMillis())/60000)+1) + " min");
+        retValue = retValue.replaceAll("@REMAININGTIME", (((showEndTime - System.currentTimeMillis()) / 60000) + 1) + " min");
         return retValue;
     }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always

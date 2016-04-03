@@ -18,6 +18,7 @@ package screenstudio.sources;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
@@ -38,8 +39,9 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
     private final File mDevice;
     private final int mWidth;
     private final int mHeight;
-    private BufferedImage buffer;
-    private final String mTitle;
+    private Image buffer;
+    private String mTitle;
+    private final int mFPS;
     private boolean stopMe = false;
 
     /**
@@ -48,16 +50,18 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
      * @param device
      * @param width
      * @param height
+     * @param title
      */
-    public WebcamViewer(File device, int width, int height, String title) {
+    public WebcamViewer(File device, int width, int height, String title, int fps) {
         initComponents();
         mDevice = device;
         mWidth = width;
         mHeight = height;
         mTitle = title;
+        mFPS = fps;
         this.setSize(width, height);
         buffer = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
-        this.setDoubleBuffered(true);
+        this.setDoubleBuffered(false);
     }
 
     public void stop() {
@@ -68,6 +72,7 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
         g.drawImage(buffer, 0, 0, this);
+        //mTitle = new Date().toString();
         if (mTitle.trim().length() > 0) {
             g.setFont(this.getFont());
             int strW = (int) g.getFontMetrics().getStringBounds(mTitle, g).getWidth();
@@ -79,6 +84,7 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
             g.setColor(Color.WHITE);
             g.setPaintMode();
             g.drawString(mTitle, (getWidth() / 2) - (strW / 2), strH);
+            
         }
     }
 
@@ -111,6 +117,7 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
     @Override
     public void run() {
         String webcamFormat = "video4linux2";
+        String bin = "ffmpeg";
         File folder = new File("FFMPEG");
         if (folder.exists()) {
             File file;
@@ -127,7 +134,7 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
                         p.load(in);
                     }
                     webcamFormat = p.getProperty("WEBCAMFORMAT", webcamFormat);
-
+                    bin = p.getProperty("BIN", bin);
                 } catch (MalformedURLException ex) {
                     Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (IOException ex) {
@@ -138,13 +145,13 @@ public class WebcamViewer extends javax.swing.JPanel implements Runnable {
         }
         try {
             stopMe = false;
-
-            Process p = Runtime.getRuntime().exec("ffmpeg -nostats -loglevel 0 -f " + webcamFormat + " -i " + mDevice + " -s " + mWidth + "x" + mHeight + " -f rawvideo -pix_fmt bgr24 -");
+            Process p = Runtime.getRuntime().exec(bin + " -nostats -loglevel 0 -f " + webcamFormat + " -i " + mDevice + " -s " + mWidth + "x" + mHeight + " -r " + mFPS + " -f rawvideo -pix_fmt bgr24 -");
             java.io.DataInputStream in = new java.io.DataInputStream(p.getInputStream());
-            byte[] imageBytes = ((DataBufferByte) buffer.getRaster().getDataBuffer()).getData();
+            BufferedImage img;
             while (!stopMe) {
-                in.readFully(imageBytes);
-                this.repaint();
+                img = new BufferedImage(mWidth, mHeight, BufferedImage.TYPE_3BYTE_BGR);
+                in.readFully(((DataBufferByte) img.getRaster().getDataBuffer()).getData());
+                buffer =img;
             }
             in.close();
             p.destroy();

@@ -18,12 +18,14 @@ package screenstudio.sources;
 
 import java.awt.Dimension;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import screenstudio.encoder.FFMpeg;
 import screenstudio.gui.overlays.PanelWebcam;
 
 /**
@@ -48,10 +50,13 @@ public class Overlay implements Runnable {
         htmlRenderer.setOpaque(true);
         htmlRenderer.repaint();
         mFPS = fps;
-        mOutput = new OverlayTCPIP(htmlRenderer, mFPS);
         new Thread(this).start();
+        mOutput = new OverlayTCPIP(htmlRenderer, mFPS);
     }
 
+    public boolean isRunning(){
+        return mOutput.isRunning();
+    }
     public void setUserTextContent(String text){
         mUserTextContent = text;
     }
@@ -74,17 +79,30 @@ public class Overlay implements Runnable {
         }
     }
 
-    public static ArrayList<File> getOverlays() {
+    public static ArrayList<File> getOverlays() throws IOException {
 
-        File overlayFolder = new File("Overlays");
+        File home = new FFMpeg().getHome();
+        File overlayFolder = new File(home,"Overlays");
         if (!overlayFolder.exists()) {
             overlayFolder.mkdir();
         }
         File[] list = overlayFolder.listFiles((File folder, String filename) -> filename.endsWith("html") || filename.endsWith("txt") || filename.endsWith("url"));
         ArrayList<File> newList = new ArrayList();
         newList.add(new ComboBoxFile("None"));
+        
         for (File f : list) {
             newList.add(new ComboBoxFile(f.getAbsolutePath()));
+        }
+        if (list.length == 0){
+            //No template found, add a default one...
+            byte[] buffer = new byte[65000];
+            java.io.InputStream in = Overlay.class.getResource("/screenstudio/sources/Default.html").openStream();
+            int count = in.read(buffer);
+            in.close();
+            FileWriter out = new FileWriter(new File(overlayFolder,"Default.html"));
+            out.write(new String(buffer,0,count));
+            out.close();
+            newList.add(new ComboBoxFile(new File(overlayFolder,"Default.html").getAbsolutePath()));
         }
         return newList;
     }
