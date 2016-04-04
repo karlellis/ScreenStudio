@@ -37,11 +37,10 @@ public class Targets {
 // <editor-fold defaultstate="collapsed" desc="Contants">
 
     public enum FORMATS {
-
+        TS,
         FLV,
-        MP4,
         MOV,
-        OGG,
+        MP4,
         HITBOX,
         TWITCH,
         USTREAM,

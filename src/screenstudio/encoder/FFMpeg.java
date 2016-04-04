@@ -174,27 +174,27 @@ public class FFMpeg {
         switch (format) {
             case FLV:
                 muxer = "flv";
-                videoEncoder = "flv";
-                audioEncoder = "libmp3lame";
+                videoEncoder = "libx264";
+                audioEncoder = "aac";
                 output = new File(defaultCaptureFolder, generateRandomName() + ".flv").getAbsolutePath();
                 break;
             case MP4:
                 muxer = "mp4";
-                videoEncoder = "mpeg4";
-                audioEncoder = "aac";
+                videoEncoder = "libx264";
+                audioEncoder = "mp3";
                 output = new File(defaultCaptureFolder, generateRandomName() + ".mp4").getAbsolutePath();
                 break;
             case MOV:
                 muxer = "mov";
                 videoEncoder = "libx264";
-                audioEncoder = "aac";
+                audioEncoder = "mp3";
                 output = new File(defaultCaptureFolder, generateRandomName() + ".mov").getAbsolutePath();
                 break;
-            case OGG:
-                muxer = "ogg";
-                videoEncoder = "libtheora";
-                audioEncoder = "libvorbis";
-                output = new File(defaultCaptureFolder, generateRandomName() + ".ogg").getAbsolutePath();
+            case TS:
+                muxer = "mpegts";
+                videoEncoder = "mpeg2video";
+                audioEncoder = "mp2";
+                output = new File(defaultCaptureFolder, generateRandomName() + ".ts").getAbsolutePath();
                 break;
             case RTMP:
             case HITBOX:
@@ -353,10 +353,6 @@ public class FFMpeg {
         if (!debugMode) {
             c.append(nonVerboseMode);
         }
-        if (overlayInput.length() > 0) {
-            int w = (int) overlaySetting.getWidth();
-            int h = (int) overlaySetting.getHeight();
-        }
         // Capture Desktop
         if (!Screen.isOSX()) {
             c.append(" -video_size ").append(captureWidth).append("x").append(captureHeight);
@@ -364,7 +360,7 @@ public class FFMpeg {
         } else {
             c.append(" -r ").append(framerate);
         }
-        c.append(" -f ").append(mainFormat).append(" -i ").append(mainInput);
+        c.append(" -thread_queue_size 0 -f ").append(mainFormat).append(" -i ").append(mainInput);
 
         if (!Screen.isOSX()) {
             if (captureX.length() > 0) {
@@ -377,7 +373,7 @@ public class FFMpeg {
         if (overlayInput.length() > 0) {
             int w = (int) overlaySetting.getWidth();
             int h = (int) overlaySetting.getHeight();
-            c.append(" -f ").append(overlayFormat);
+            c.append(" -thread_queue_size 0 -f ").append(overlayFormat);
             c.append(" -framerate ").append(framerate);
             c.append(" -video_size ").append(w).append("x").append(h);
             c.append(" -i ").append(overlayInput);

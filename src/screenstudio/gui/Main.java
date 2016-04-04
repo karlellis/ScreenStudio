@@ -99,7 +99,6 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
             public void run() {
                 //Check for a new version...
                 if (Version.hasNewVersion()) {
-                    System.out.println("TEST");
                     lblNotice.setText("A new version is available");
                 }
             }
@@ -294,7 +293,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
     private void updateTrayIcon() {
         if (trayIcon != null) {
             long delta = (System.currentTimeMillis() - recordingTimestamp) / 60000; //In minutes
-            Image img = this.createImage((int) trayIcon.getSize().getWidth(), (int) trayIcon.getSize().getHeight());
+            Image img = trayIcon.getImage();
             Graphics2D g = (Graphics2D) img.getGraphics();
             if (this.processRunning) {
                 g.setBackground(Color.GREEN);
@@ -320,6 +319,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                 this.trayIcon.setToolTip("Recording Time: " + delta + " minutes...");
             } else {
                 g.drawImage(this.getIconImage().getScaledInstance(img.getWidth(null), img.getHeight(null), Image.SCALE_FAST), 0, 0, null);
+                g.dispose();
                 trayIcon.setImage(img);
             }
         }
