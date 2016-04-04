@@ -8,7 +8,13 @@
 # Set the working directory
 INSTALLDIR=/usr/lib/screenstudio
 
+# Include java-wrappers
+. /usr/lib/java-wrappers/java-wrappers.sh
+
+JAVA_CLASSPATH="${INSTALLDIR}/*:${INSTALLDIR}/lib/*"
+JAVA_ARGS="-splash:splash.gif"
+
 # Run the application
 cd ${INSTALLDIR}
 
-java -cp ScreenStudio.jar:lib/* screenstudio.gui.Main
+run_java screenstudio.gui.Main "$@"
