@@ -1,3 +1,9 @@
+screenstudio (2.0.9) trusty; urgency=medium
+
+  * Adds: Added option THREADING in FFMPEG.properties files (threading feature)
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Tue, 05 Apr 2016 17:56:47 +0200
+
 screenstudio (2.0.8) trusty; urgency=medium
 
   * Adds: Added TS format
