@@ -93,7 +93,7 @@ public class FFMpeg {
     private File defaultCaptureFolder = new File(".");
     private String output = "Capture/capture.mp4";
     private File mHome = new File(".");
-    
+    private String mThreading = "";
 
     private Rectangle overlaySetting = new Rectangle(0, 0);
 
@@ -360,7 +360,7 @@ public class FFMpeg {
         } else {
             c.append(" -r ").append(framerate);
         }
-        c.append(" -thread_queue_size 0 -f ").append(mainFormat).append(" -i ").append(mainInput);
+        c.append(" ").append(mThreading).append(" -f ").append(mainFormat).append(" -i ").append(mainInput);
 
         if (!Screen.isOSX()) {
             if (captureX.length() > 0) {
@@ -373,13 +373,13 @@ public class FFMpeg {
         if (overlayInput.length() > 0) {
             int w = (int) overlaySetting.getWidth();
             int h = (int) overlaySetting.getHeight();
-            c.append(" -thread_queue_size 0 -f ").append(overlayFormat);
+            c.append(" ").append(mThreading).append(" -f ").append(overlayFormat);
             c.append(" -framerate ").append(framerate);
             c.append(" -video_size ").append(w).append("x").append(h);
             c.append(" -i ").append(overlayInput);
             c.append(" -filter_complex [0:v]pad=iw+").append(w).append(":ih[desk];[desk][2:v]overlay=main_w-overlay_w:0");
 
-        }//setpts=PTS-STARTPTS+7/TB[v1]
+        }
 
         // Enabled strict settings
         if (strictSetting.length() > 0) {
@@ -438,6 +438,7 @@ public class FFMpeg {
                         mHome.mkdirs();
                     }
                     defaultCaptureFolder = new File(mHome, "Capture");
+                    mThreading = p.getProperty("THREADING",mThreading);
 
                 } catch (MalformedURLException ex) {
                     Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
