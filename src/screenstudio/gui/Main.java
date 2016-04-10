@@ -49,6 +49,7 @@ import java.util.logging.Logger;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.KeyStroke;
+import javax.swing.UnsupportedLookAndFeelException;
 import screenstudio.Version;
 import screenstudio.encoder.FFMpeg;
 import screenstudio.gui.overlays.PanelWebcam;
@@ -78,6 +79,8 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
     /**
      * Creates new form Main
+     *
+     * @param config
      */
     public Main(File config) {
         initComponents();
@@ -94,7 +97,6 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
         isLoading = false;
         new Thread(new Runnable() {
-
             @Override
             public void run() {
                 //Check for a new version...
@@ -103,6 +105,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                 }
             }
         }).start();
+        this.setLocationByPlatform(true);
     }
 
     private void initControls() {
@@ -242,11 +245,11 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
         txtWebcamTitle.setText(target.webcamTitle);
         chkDoNotHide.setSelected(target.doNotHide.equals("true"));
-        
+
         cboAudioRate.removeAllItems();
-        for (FFMpeg.AudioRate o : FFMpeg.AudioRate.values()){
+        for (FFMpeg.AudioRate o : FFMpeg.AudioRate.values()) {
             cboAudioRate.addItem(o);
-            if (o.name().equals(target.outputAudioRate)){
+            if (o.name().equals(target.outputAudioRate)) {
                 cboAudioRate.setSelectedItem(o);
                 audioRate = o;
             }
@@ -389,7 +392,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                 runningOverlay = new Overlay(content, (Integer) spinPanelWidth.getValue(), (int) s.getSize().getHeight(), s.getFps(), null, (Integer) spinShowDurationTime.getValue(), txtPanelContentText.getText(), txtWebcamTitle.getText());
             }
             command.setOverlay(runningOverlay);
-            while(!runningOverlay.isRunning()){
+            while (!runningOverlay.isRunning()) {
                 Thread.sleep(100);
             }
         }
@@ -574,6 +577,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
         jLabel8 = new javax.swing.JLabel();
         scrollPanelContentText = new javax.swing.JScrollPane();
         txtPanelContentText = new javax.swing.JTextArea();
+        btnEditor = new javax.swing.JButton();
         panStatusBar = new javax.swing.JPanel();
         lblMessages = new javax.swing.JLabel();
         lblNotice = new javax.swing.JLabel();
@@ -602,6 +606,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setFont(new java.awt.Font("Nimbus Roman No9 L", 0, 10)); // NOI18N
+        setPreferredSize(new java.awt.Dimension(450, 375));
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 formWindowClosing(evt);
@@ -668,7 +673,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                             .addComponent(lblProfiles))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(panCaptureLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(cboProfiles, 0, 348, Short.MAX_VALUE)
+                            .addComponent(cboProfiles, 0, 292, Short.MAX_VALUE)
                             .addComponent(cboTargets, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(panCaptureLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -694,7 +699,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                     .addComponent(cboProfiles, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnSetProfile))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(lblCurrentTargetConfiguration, javax.swing.GroupLayout.DEFAULT_SIZE, 163, Short.MAX_VALUE)
+                .addComponent(lblCurrentTargetConfiguration, javax.swing.GroupLayout.DEFAULT_SIZE, 162, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(btnCapture)
                 .addContainerGap())
@@ -804,7 +809,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                     .addGroup(panSourcesLayout.createSequentialGroup()
                         .addGroup(panSourcesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                             .addComponent(jLabel11, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 91, Short.MAX_VALUE)
+                            .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel7, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -900,10 +905,10 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
         jLabel6.setText("Panel Width");
 
-        spinPanelWidth.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(320), null, null, Integer.valueOf(10)));
+        spinPanelWidth.setModel(new javax.swing.SpinnerNumberModel(320, null, null, 10));
         spinPanelWidth.setEditor(new javax.swing.JSpinner.NumberEditor(spinPanelWidth, ""));
 
-        spinShowDurationTime.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(30), Integer.valueOf(0), null, Integer.valueOf(15)));
+        spinShowDurationTime.setModel(new javax.swing.SpinnerNumberModel(30, 0, null, 15));
 
         jLabel1.setText("Duration");
 
@@ -912,6 +917,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
         scrollPanelContentText.setBorder(javax.swing.BorderFactory.createTitledBorder("Text Content (@TEXT)"));
 
         txtPanelContentText.setColumns(20);
+        txtPanelContentText.setFont(new java.awt.Font("Ubuntu", 0, 12)); // NOI18N
         txtPanelContentText.setLineWrap(true);
         txtPanelContentText.setRows(5);
         txtPanelContentText.setWrapStyleWord(true);
@@ -923,6 +929,14 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
         });
         scrollPanelContentText.setViewportView(txtPanelContentText);
 
+        btnEditor.setText("Editor");
+        btnEditor.setToolTipText("Launch internal HTML editor");
+        btnEditor.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnEditorActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout panPanelLayout = new javax.swing.GroupLayout(panPanel);
         panPanel.setLayout(panPanelLayout);
         panPanelLayout.setHorizontalGroup(
@@ -930,25 +944,27 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
             .addGroup(panPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(scrollPanelContentText, javax.swing.GroupLayout.DEFAULT_SIZE, 475, Short.MAX_VALUE)
+                    .addComponent(scrollPanelContentText, javax.swing.GroupLayout.DEFAULT_SIZE, 381, Short.MAX_VALUE)
                     .addGroup(panPanelLayout.createSequentialGroup()
                         .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, 80, Short.MAX_VALUE)
+                            .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 80, Short.MAX_VALUE)
                             .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(panPanelLayout.createSequentialGroup()
-                                .addComponent(cboOverlays, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnPreviewPanelContent))
                             .addGroup(panPanelLayout.createSequentialGroup()
                                 .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                     .addComponent(spinPanelWidth, javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(spinShowDurationTime, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 78, Short.MAX_VALUE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(jLabel8)
-                                .addGap(0, 0, Short.MAX_VALUE)))))
+                                .addGap(0, 0, Short.MAX_VALUE))
+                            .addGroup(panPanelLayout.createSequentialGroup()
+                                .addComponent(cboOverlays, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnPreviewPanelContent)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnEditor)))))
                 .addContainerGap())
         );
         panPanelLayout.setVerticalGroup(
@@ -958,7 +974,8 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                 .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel5)
                     .addComponent(cboOverlays, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnPreviewPanelContent))
+                    .addComponent(btnPreviewPanelContent)
+                    .addComponent(btnEditor))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(panPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel6)
@@ -1221,7 +1238,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
     }//GEN-LAST:event_formWindowClosing
 
     private void chkDoNotHideActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chkDoNotHideActionPerformed
-        if (chkDoNotHide.isSelected()){
+        if (chkDoNotHide.isSelected()) {
             target.doNotHide = "true";
         } else {
             target.doNotHide = "false";
@@ -1229,30 +1246,49 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
     }//GEN-LAST:event_chkDoNotHideActionPerformed
 
     private void cboAudioRateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboAudioRateActionPerformed
-        audioRate = (FFMpeg.AudioRate)cboAudioRate.getSelectedItem();        
+        audioRate = (FFMpeg.AudioRate) cboAudioRate.getSelectedItem();
     }//GEN-LAST:event_cboAudioRateActionPerformed
+
+    private void btnEditorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditorActionPerformed
+        if (cboOverlays.getSelectedIndex() > 0) {
+            new screenstudio.panel.editor.Editor((File) cboOverlays.getSelectedItem(), txtPanelContentText.getText(), (int) spinPanelWidth.getValue()).setVisible(true);
+        } else {
+            new screenstudio.panel.editor.Editor((File) null, txtPanelContentText.getText(), (int) spinPanelWidth.getValue()).setVisible(true);
+        }
+    }//GEN-LAST:event_btnEditorActionPerformed
 
     /**
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
         try {
-            //javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getCrossPlatformLookAndFeelClassName());
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            /* Set the Nimbus look and feel */
+            //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+            /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+            * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html
+             */
+//        try {
+//            //javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getCrossPlatformLookAndFeelClassName());
+//            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+//                if ("Nimbus".equals(info.getName())) {
+//                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+//                    break;
+//                }
+//            }
+//        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
+//            java.util.logging.Logger.getLogger(Main.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+//        }
+            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+//</editor-fold>
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (UnsupportedLookAndFeelException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }
-        //</editor-fold>
 
         //</editor-fold>
         if (args.length >= 1) {
@@ -1278,6 +1314,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnCapture;
+    private javax.swing.JButton btnEditor;
     private javax.swing.JButton btnPreviewPanelContent;
     private javax.swing.JButton btnSetDisplay;
     private javax.swing.JButton btnSetProfile;

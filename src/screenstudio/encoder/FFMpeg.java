@@ -56,6 +56,7 @@ public class FFMpeg {
      * Supported audio rate for output
      */
     public enum AudioRate {
+
         Audio11K,
         Audio22K,
         Audio44K,
@@ -110,9 +111,10 @@ public class FFMpeg {
         output = new File(defaultCaptureFolder, "capture.flv").getAbsolutePath();
     }
 
-    public File getHome(){
+    public File getHome() {
         return mHome;
     }
+
     /**
      * Set the audio parameters
      *
@@ -356,10 +358,8 @@ public class FFMpeg {
         // Capture Desktop
         if (!Screen.isOSX()) {
             c.append(" -video_size ").append(captureWidth).append("x").append(captureHeight);
-            c.append(" -framerate ").append(framerate);
-        } else {
-            c.append(" -r ").append(framerate);
         }
+        c.append(" -framerate ").append(framerate);
         c.append(" ").append(mThreading).append(" -f ").append(mainFormat).append(" -i ").append(mainInput);
 
         if (!Screen.isOSX()) {
@@ -433,12 +433,12 @@ public class FFMpeg {
                     //Output
                     strictSetting = p.getProperty("STRICTSETTINGS", "-2") + " ";
                     //HOME
-                    mHome = new File(p.getProperty("HOME", ".").replaceAll("~",System.getProperty("user.home")));
-                    if (!mHome.exists()){
+                    mHome = new File(p.getProperty("HOME", ".").replaceAll("~", System.getProperty("user.home")));
+                    if (!mHome.exists()) {
                         mHome.mkdirs();
                     }
                     defaultCaptureFolder = new File(mHome, "Capture");
-                    mThreading = p.getProperty("THREADING",mThreading);
+                    mThreading = p.getProperty("THREADING", mThreading);
 
                 } catch (MalformedURLException ex) {
                     Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);

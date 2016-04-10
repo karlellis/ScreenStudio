@@ -1,3 +1,9 @@
+screenstudio (2.1.0) trusty; urgency=medium
+
+  * Adds: Panel Editor
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sun, 10 Apr 2016 16:40:05 +0200
+
 screenstudio (2.0.9) trusty; urgency=medium
 
   * Adds: Added option THREADING in FFMPEG.properties files (threading feature)

@@ -16,6 +16,17 @@
  */
 package screenstudio.gui;
 
+import java.awt.AWTException;
+import java.awt.Cursor;
+import java.awt.Graphics2D;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import screenstudio.sources.Screen;
 
 /**
@@ -29,12 +40,12 @@ public class SetupDisplay extends javax.swing.JDialog {
     /**
      * Creates new form SetupDisplay
      */
-    public SetupDisplay(Screen s,java.awt.Frame parent, boolean modal) {
+    public SetupDisplay(Screen s, java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         screen = s;
         spinFPS.setValue(screen.getFps());
-      
+
     }
 
     /**
@@ -49,6 +60,7 @@ public class SetupDisplay extends javax.swing.JDialog {
         jLabel1 = new javax.swing.JLabel();
         spinFPS = new javax.swing.JSpinner();
         btnOK = new javax.swing.JButton();
+        btnTestCapture = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
@@ -58,11 +70,16 @@ public class SetupDisplay extends javax.swing.JDialog {
         spinFPS.setEditor(new javax.swing.JSpinner.NumberEditor(spinFPS, ""));
 
         btnOK.setText("OK");
-        btnOK.setToolTipText("");
-        btnOK.setActionCommand("OK");
         btnOK.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnOKActionPerformed(evt);
+            }
+        });
+
+        btnTestCapture.setText("Test...");
+        btnTestCapture.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnTestCaptureActionPerformed(evt);
             }
         });
 
@@ -75,7 +92,9 @@ public class SetupDisplay extends javax.swing.JDialog {
                 .addComponent(jLabel1)
                 .addGap(18, 18, 18)
                 .addComponent(spinFPS, javax.swing.GroupLayout.PREFERRED_SIZE, 84, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(103, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(btnTestCapture)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(btnOK)
@@ -87,7 +106,8 @@ public class SetupDisplay extends javax.swing.JDialog {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
-                    .addComponent(spinFPS, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(spinFPS, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnTestCapture))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(btnOK)
                 .addContainerGap())
@@ -97,17 +117,45 @@ public class SetupDisplay extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnOKActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnOKActionPerformed
-        if (screen != null){
-            screen.setFps((Integer)spinFPS.getValue());
+        if (screen != null) {
+            screen.setFps((Integer) spinFPS.getValue());
         }
         this.setVisible(false);
         this.dispose();
     }//GEN-LAST:event_btnOKActionPerformed
 
-    
+    private void btnTestCaptureActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTestCaptureActionPerformed
+        this.setCursor(new Cursor(Cursor.WAIT_CURSOR));
+        btnTestCapture.setEnabled(false);
+        try {
+            //Test how fast we can capture...
+            Robot robot = new Robot();
+            long start = System.currentTimeMillis();
+            Rectangle r = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
+            long frames = 30;
+            for (int i = 0; i < frames; i++) {
+                robot.createScreenCapture(r);
+            }
+            long timelaps = System.currentTimeMillis() - start;
+            long avg = 1000 / (timelaps / frames) * 3;
+            System.out.println("Frames: " + frames + " / " + timelaps + " : " + avg);
+            if (avg < 5) {
+                avg = 5;
+            }
+            if (avg > 30) {
+                avg = 30;
+            }
+            spinFPS.setValue((int) avg);
+        } catch (AWTException ex) {
+            Logger.getLogger(SetupDisplay.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        btnTestCapture.setEnabled(true);
+        this.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+    }//GEN-LAST:event_btnTestCaptureActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnOK;
+    private javax.swing.JButton btnTestCapture;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JSpinner spinFPS;
     // End of variables declaration//GEN-END:variables

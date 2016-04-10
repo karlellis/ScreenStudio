@@ -147,6 +147,7 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
         lblText = new javax.swing.JLabel();
 
         setBackground(java.awt.Color.black);
+        setFont(new java.awt.Font("Ubuntu", 0, 12)); // NOI18N
         setLayout(new java.awt.BorderLayout());
 
         panWebcam.setBackground(new java.awt.Color(102, 102, 102));
@@ -165,7 +166,6 @@ public class PanelWebcam extends javax.swing.JPanel implements TextContent {
         lblText.setPreferredSize(new java.awt.Dimension(320, 24));
         add(lblText, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
-
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel lblText;
