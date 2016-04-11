@@ -19,11 +19,9 @@ package screenstudio.sources;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
-import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import screenstudio.gui.overlays.PanelWebcam;
@@ -32,29 +30,27 @@ import screenstudio.gui.overlays.PanelWebcam;
  *
  * @author patrick
  */
-public class OverlayTCPIP implements Runnable {
+public class OverlayUnix implements Runnable {
 
-    private ServerSocket server = null;
     private PanelWebcam mPanel = null;
     private long mFPS = 10;
     private boolean stopMe = false;
     private boolean mIsRunning = false;
+    private final File mOutput;
 
-    public OverlayTCPIP(PanelWebcam panel, long fps) throws IOException, InterruptedException {
+    public OverlayUnix(PanelWebcam panel, long fps) throws IOException, InterruptedException {
         mPanel = panel;
         mFPS = fps;
-        server = new ServerSocket(8000 + new Random().nextInt(1000));
-        server.setSoTimeout(2000);
+        mOutput = File.createTempFile("screenstudio", ".raw");
+        mOutput.deleteOnExit();
+        //Make sure it does not exists
+        mOutput.delete();
+        Runtime.getRuntime().exec("mkfifo " + mOutput.getAbsolutePath());
         new Thread(this).start();
     }
 
-    public int getPort() {
-        if (server != null) {
-            return server.getLocalPort();
-        } else {
-            return -1;
-        }
-
+    public File getOutput() {
+        return mOutput;
     }
 
     public boolean isRunning() {
@@ -65,26 +61,15 @@ public class OverlayTCPIP implements Runnable {
     public void run() {
         mIsRunning = true;
         stopMe = false;
-        java.io.DataOutputStream out = null;
+        java.io.FileOutputStream out = null;
         try {
             // Pipe created. so we need to paint
             // the panel in the fifo each x ms seconds..
             // Use a BGR 24 bits images as ffmpeg will read  -pix_format BGR24
             BufferedImage img = new BufferedImage(mPanel.getWidth(), mPanel.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-            //waiting for connection...
-            while (!stopMe && out == null) {
-                try {
-                    System.out.println("Waiting for connection...");
-                    Socket s = server.accept();
-                    System.out.println("Got connection...");
-                    s.setSendBufferSize(img.getWidth() * img.getHeight() * 3);
-                    out = new DataOutputStream(s.getOutputStream());
-                } catch (java.net.SocketTimeoutException ex) {
-                    //do nothing...
-                }
-            }
             mPanel.doLayout();
             Graphics g = img.getGraphics();
+            out = new FileOutputStream(mOutput);
             byte[] imageBytes = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
             long frameTime = (1000000000 / mFPS);
             long nextPTS = System.nanoTime() + frameTime;
@@ -119,18 +104,11 @@ public class OverlayTCPIP implements Runnable {
                 try {
                     out.close();
                 } catch (IOException ex1) {
-                    Logger.getLogger(OverlayTCPIP.class.getName()).log(Level.SEVERE, null, ex1);
+                    Logger.getLogger(OverlayUnix.class.getName()).log(Level.SEVERE, null, ex1);
                 }
             }
         }
-        if (server != null) {
-            try {
-                server.close();
-            } catch (IOException ex) {
-                Logger.getLogger(OverlayTCPIP.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            server = null;
-        }
+        mOutput.delete();
         mIsRunning = false;
     }
 
