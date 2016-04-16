@@ -103,7 +103,7 @@ public class Targets {
     public String mainAudio = "";
     public String secondAudio = "";
     public String mainOverlay = "";
-    public String mainOverlayWidth = "320";
+    public String mainOverlayLocation = "Right";
     public String framerate = "";
     public String captureX = "";
     public String captureY = "";
@@ -122,6 +122,7 @@ public class Targets {
     public String shortcutKey = "control shift R";
     public String doNotHide = "false";
     public String webcamLocation = "Top";
+    public String command = "";
 // </editor-fold>
 
     public void saveDefault(File config) throws IOException {
