@@ -16,7 +16,6 @@
  */
 package screenstudio.sources;
 
-import java.awt.Dimension;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -26,7 +25,7 @@ import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import screenstudio.encoder.FFMpeg;
-import screenstudio.gui.overlays.PanelWebcam;
+import screenstudio.gui.overlays.Renderer;
 
 /**
  *
@@ -36,25 +35,32 @@ public class Overlay implements Runnable {
 
     private File mContent;
     private String mUserTextContent;
-    private final PanelWebcam htmlRenderer;
+    private final Renderer htmlRenderer;
     private final int mFPS;
     private boolean stopME = false;
     private OverlayUnix mOutput = null;
-    private String mCommand;
+    private final String mCommand;
+    private boolean mIsPrivateMode = false;
 
-    public Overlay(File content, PanelWebcam.PanelLocation location, Screen screen, screenstudio.sources.Webcam webcam, int showDurationTime, String userTextContent, String webcamTitle, String command) throws IOException, InterruptedException {
+    public Overlay(File content, Renderer.PanelLocation location,int panelSize, Screen screen, screenstudio.sources.Webcam webcam, int showDurationTime, String userTextContent, String command) throws IOException, InterruptedException {
         mContent = content;
         mCommand = command;
         mUserTextContent = userTextContent;
-        htmlRenderer = new PanelWebcam(location, webcam, screen, showDurationTime, webcamTitle);
-        htmlRenderer.setVisible(true);
-        htmlRenderer.setOpaque(true);
-        htmlRenderer.repaint();
+        htmlRenderer = new Renderer(location,panelSize, webcam, screen, showDurationTime);
         mFPS = screen.getFps();
         new Thread(this).start();
         mOutput = new OverlayUnix(htmlRenderer, mFPS);
     }
 
+    
+    public boolean isPrivateMode(){
+        return mIsPrivateMode;
+    }
+    public void setPrivateMode(boolean value){
+        mIsPrivateMode = value;
+        mOutput.setPrivateMode(value);
+    }
+    
     public void start() {
         mOutput.start();
     }
@@ -75,8 +81,12 @@ public class Overlay implements Runnable {
         stopME = true;
     }
 
-    public Dimension getSize() {
-        return htmlRenderer.getSize();
+    public int getWidth() {
+        return htmlRenderer.getWidth();
+    }
+
+    public int getHeight() {
+        return htmlRenderer.getHeight();
     }
 
     public String OutputURL() {
@@ -137,7 +147,6 @@ public class Overlay implements Runnable {
         stopME = false;
         try {
             htmlRenderer.setText("<html></html>", "", "");
-            htmlRenderer.repaint();
             while (!stopME) {
                 // Read content into renderer...
                 InputStream in = mContent.toURI().toURL().openStream();
@@ -163,7 +172,6 @@ public class Overlay implements Runnable {
                     //Reading raw content from a text file
                     htmlRenderer.setText("<html>" + new String(data).replaceAll("\n", "<br>") + "</html>", mUserTextContent, mCommand);
                 }
-                htmlRenderer.repaint();
                 in.close();
                 try {
                     Thread.sleep(1000);

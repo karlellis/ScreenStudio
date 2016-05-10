@@ -31,46 +31,32 @@ import screenstudio.encoder.FFMpeg;
  *
  * @author patrick
  */
-public class WebcamViewer implements Runnable {
+public class DesktopViewer implements Runnable {
 
-    private final File mDevice;
-    private final Screen mScreen;
-    private final int mWidth;
-    private final int mHeight;
+    private final Screen mDevice;
     private BufferedImage buffer;
-    private final int mFPS;
     private boolean stopMe = false;
 
     /**
      * Creates new form WebcamViewer
      *
-     * @param screen
      * @param device
-     * @param width
-     * @param height
-     * @param fps
      */
-    public WebcamViewer(Screen screen, File device, int width, int height, int fps) {
+    public DesktopViewer(Screen device) {
         mDevice = device;
-        mScreen = screen;
-        mWidth = width;
-        mHeight = height;
-        mFPS = fps;
-        buffer = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
-    }
-
-    public BufferedImage getImage() {
-        return buffer;
+        buffer = new BufferedImage((int) mDevice.getSize().getWidth(), (int) mDevice.getSize().getHeight(), BufferedImage.TYPE_3BYTE_BGR);
     }
 
     public void stop() {
         stopMe = true;
     }
 
+    public BufferedImage getImage() {
+        return buffer;
+    }
+
     @Override
     public void run() {
-
-        String webcamFormat = "video4linux2";
         String displayFormat = "x11grab";
         String bin = "ffmpeg";
         File folder = new File("FFMPEG");
@@ -88,7 +74,6 @@ public class WebcamViewer implements Runnable {
                     try (InputStream in = file.toURI().toURL().openStream()) {
                         p.load(in);
                     }
-                    webcamFormat = p.getProperty("WEBCAMFORMAT", webcamFormat);
                     displayFormat = p.getProperty("DESKTOPFORMAT", displayFormat);
                     bin = p.getProperty("BIN", bin);
                 } catch (MalformedURLException ex) {
@@ -103,18 +88,15 @@ public class WebcamViewer implements Runnable {
         try {
             stopMe = false;
             String command;
-
-            if (mDevice.getName().equals("MOUSE")) {
-                if (Screen.isOSX()) {
-                    command = bin + " -nostats -loglevel 0 -f " + displayFormat + " -follow_mouse centered -video_size " + mWidth / 2 + "x" + mHeight / 2 + " -i " + mScreen.getId() + ": -s " + mWidth + "x" + mHeight + " -r " + mFPS + "  -f rawvideo -pix_fmt bgr24 -";
-                } else {
-                    command = bin + " -nostats -loglevel 0 -f " + displayFormat + " -follow_mouse centered -video_size " + mWidth / 2 + "x" + mHeight / 2 + " -i " + ":0.0 -s " + mWidth + "x" + mHeight + " -r " + mFPS + " -f rawvideo -pix_fmt bgr24 -";
-                }
+            if (Screen.isOSX()) {
+                command = bin + " -nostats -loglevel 0 -f " + displayFormat + " -video_size " + buffer.getWidth() + "x" + buffer.getHeight() + " -i " + mDevice.getId() + ": -r " + mDevice.getFps() + "  -f rawvideo -pix_fmt bgr24 -";
             } else {
-                command = bin + " -nostats -loglevel 0 -f " + webcamFormat + " -i " + mDevice.toString() + " -s " + mWidth + "x" + mHeight + " -r " + mFPS + " -f rawvideo -pix_fmt bgr24 -";
+                command = bin + " -nostats -loglevel 0 -f " + displayFormat + " -video_size " + buffer.getWidth() + "x" + buffer.getHeight() + " -i " + ":0.0  -r " + mDevice.getFps() + "  -f rawvideo -pix_fmt bgr24 -";
             }
+            System.out.println(command);
             Process p = Runtime.getRuntime().exec(command);
             java.io.DataInputStream in = new java.io.DataInputStream(p.getInputStream());
+
             BufferedImage b1 = new BufferedImage(buffer.getWidth(), buffer.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
             BufferedImage b2 = new BufferedImage(buffer.getWidth(), buffer.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
             boolean flip = false;
@@ -131,7 +113,7 @@ public class WebcamViewer implements Runnable {
             in.close();
             p.destroy();
         } catch (IOException ex) {
-            Logger.getLogger(WebcamViewer.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DesktopViewer.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 

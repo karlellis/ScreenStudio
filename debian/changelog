@@ -1,3 +1,15 @@
+screenstudio (2.2.0) trusty; urgency=medium
+
+  * Adds: New compositing engine
+  * Adds: Added Privacy mode while streaming
+  * Adds: Manual panel size when no webcam is selected
+  * Adds: Mouse follow up (Virtual webcam)
+  * Changes: Better layout handling (Top, Left, Right, Bottom)
+  * Changes: Other stuff I may not remember ;)
+  * Fixes: Faster, smoother, better!
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Tue, 10 May 2016 17:55:44 +0200
+
 screenstudio (2.1.4) trusty; urgency=medium
 
   * Fixes: Fixed minor png import issue
