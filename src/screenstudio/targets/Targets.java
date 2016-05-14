@@ -125,6 +125,8 @@ public class Targets {
     public String webcamLocation = "Top";
     public String command = "";
     public String waterMarkFile = "";
+    public String twitchalertsfolder = "/home/user/twitchalerts";
+    
     private final TreeMap<String, String> keys = new TreeMap();
 // </editor-fold>
 
@@ -192,7 +194,9 @@ public class Targets {
                 if (key.getName().endsWith(".key")) {
                     InputStream fin = key.toURI().toURL().openStream();
                     count = fin.read(data);
-                    keys.put(key.getName().replaceAll(".key", ""), new String(data, 0, count));
+                    if (count > 1) {
+                        keys.put(key.getName().replaceAll(".key", ""), new String(data, 0, count));
+                    }
                     in.close();
                 }
             }

@@ -16,8 +16,12 @@
  */
 package screenstudio.gui.overlays;
 
+import java.awt.AlphaComposite;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -29,14 +33,16 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JLabel;
 import screenstudio.sources.DesktopViewer;
+import screenstudio.sources.NotificationListener;
 import screenstudio.sources.Screen;
+import screenstudio.sources.UDPNotifications;
 import screenstudio.sources.WebcamViewer;
 
 /**
  *
  * @author patrick
  */
-public class Renderer {
+public class Renderer implements NotificationListener {
 
     private WebcamViewer mViewer;
     private DesktopViewer mDesktop;
@@ -50,6 +56,9 @@ public class Renderer {
     private PanelLocation panelLocation;
     private WebcamLocation webcamLocation;
     private final BufferedImage textBuffer;
+    private UDPNotifications notifications;
+    private long lastNotificationTime = 0;
+    private JLabel notificationMessage = null;
 
     private int desktopX = 0;
     private int desktopY = 0;
@@ -58,6 +67,14 @@ public class Renderer {
     private int webcamX = 0;
     private int webcamY = 0;
     private int textSize = 0;
+
+    @Override
+    public void received(String message) {
+        lastNotificationTime = System.currentTimeMillis();
+        notificationMessage.setText("<HTML><BODY width=" + notificationMessage.getWidth() + " height=" + notificationMessage.getHeight() + ">" + message + "</BODY></HTML>");
+        notificationMessage.validate();
+        System.out.println("Message received: " + message);
+    }
 
     public enum WebcamLocation {
 
@@ -79,24 +96,24 @@ public class Renderer {
         switch (panelLocation) {
             case Top:
             case Bottom:
-                return mDesktop.getImage().getWidth();
+                return mDesktop.getImage().getWidth(null);
             case Left:
             case Right:
-                return mDesktop.getImage().getWidth() + lblText.getWidth();
+                return mDesktop.getImage().getWidth(null) + lblText.getWidth();
         }
-        return mDesktop.getImage().getWidth();
+        return mDesktop.getImage().getWidth(null);
     }
 
     public int getHeight() {
         switch (panelLocation) {
             case Top:
             case Bottom:
-                return mDesktop.getImage().getHeight() + lblText.getHeight();
+                return mDesktop.getImage().getHeight(null) + lblText.getHeight();
             case Left:
             case Right:
-                return mDesktop.getImage().getHeight();
+                return mDesktop.getImage().getHeight(null);
         }
-        return mDesktop.getImage().getHeight();
+        return mDesktop.getImage().getHeight(null);
     }
 
     private void setPositions() {
@@ -113,7 +130,7 @@ public class Renderer {
                     switch (webcamLocation) {
                         case Top:
                         case Left:
-                            textX = mViewer.getImage().getWidth();
+                            textX = mViewer.getImage().getWidth(null);
                             break;
                         case Bottom:
                         case Right:
@@ -127,19 +144,19 @@ public class Renderer {
                     switch (webcamLocation) {
                         case Top:
                         case Left:
-                            textX = mViewer.getImage().getWidth();
-                            textY = mViewer.getImage().getHeight();
-                            webcamY = mDesktop.getImage().getHeight();
+                            textX = mViewer.getImage().getWidth(null);
+                            textY = mViewer.getImage().getHeight(null);
+                            webcamY = mDesktop.getImage().getHeight(null);
                             break;
                         case Bottom:
                         case Right:
-                            textY = mDesktop.getImage().getHeight();
+                            textY = mDesktop.getImage().getHeight(null);
                             webcamX = textBuffer.getWidth();
-                            webcamY = mDesktop.getImage().getHeight();
+                            webcamY = mDesktop.getImage().getHeight(null);
                             break;
                     }
                 } else {
-                    textY = mDesktop.getImage().getHeight();
+                    textY = mDesktop.getImage().getHeight(null);
                 }
                 break;
             case Left:
@@ -149,7 +166,7 @@ public class Renderer {
                     switch (webcamLocation) {
                         case Top:
                         case Left:
-                            textX = mViewer.getImage().getHeight();
+                            textX = mViewer.getImage().getHeight(null);
                             break;
                         case Bottom:
                         case Right:
@@ -164,19 +181,19 @@ public class Renderer {
                     switch (webcamLocation) {
                         case Top:
                         case Left:
-                            textX = mDesktop.getImage().getWidth();
-                            textY = mViewer.getImage().getHeight();
-                            webcamX = mDesktop.getImage().getWidth();
+                            textX = mDesktop.getImage().getWidth(null);
+                            textY = mViewer.getImage().getHeight(null);
+                            webcamX = mDesktop.getImage().getWidth(null);
                             break;
                         case Bottom:
                         case Right:
-                            textX = mDesktop.getImage().getWidth();
-                            webcamX = mDesktop.getImage().getWidth();
+                            textX = mDesktop.getImage().getWidth(null);
+                            webcamX = mDesktop.getImage().getWidth(null);
                             webcamY = textBuffer.getHeight();
                             break;
                     }
                 } else {
-                    textX = mDesktop.getImage().getWidth();
+                    textX = mDesktop.getImage().getWidth(null);
                 }
                 break;
         }
@@ -190,6 +207,8 @@ public class Renderer {
         startingTime = System.currentTimeMillis();
         showEndTime = System.currentTimeMillis() + (showDuration * 60000);
         textSize = panelSize;
+        notifications = new UDPNotifications(this);
+        notificationMessage = new JLabel("<HTML><BODY></BODY></HTML>");
         mDesktop = new DesktopViewer(screen);
         new Thread(mDesktop).start();
         mViewer = null;
@@ -224,10 +243,20 @@ public class Renderer {
         lblText.setSize(lblText.getPreferredSize());
         lblText.setLocation(0, 0);
         textBuffer = new BufferedImage((int) lblText.getPreferredSize().getWidth(), (int) lblText.getPreferredSize().getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+        notificationMessage.setPreferredSize(new Dimension(screen.getWidth(), 150));
+        notificationMessage.setVisible(true);
+        notificationMessage.setSize(notificationMessage.getPreferredSize());
+        notificationMessage.setLocation(0, 250);
+        notificationMessage.setVerticalAlignment(JLabel.TOP);
+        notificationMessage.setFont(new Font("Monospaced", Font.BOLD, 24));
     }
 
     public boolean IsUpdating() {
         return mIsUpdating;
+    }
+
+    public int getPort() {
+        return notifications.getPort();
     }
 
     public void stop() {
@@ -246,12 +275,18 @@ public class Renderer {
             nextTextUpdate = System.currentTimeMillis() + 1000;
         }
         lblText.paint(textBuffer.getGraphics());
-        BufferedImage desktop = mDesktop.getImage();
+        Image desktop = mDesktop.getImage();
+
         g.drawImage(desktop, desktopX, desktopY, null);
         g.drawImage(textBuffer, textX, textY, null);
         if (mViewer != null) {
-            BufferedImage webcam = mViewer.getImage();
+            Image webcam = mViewer.getImage();
             g.drawImage(webcam, webcamX, webcamY, null);
+        }
+        if (System.currentTimeMillis() - lastNotificationTime <= 10000) {
+            ((Graphics2D) g).setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (10000 - (System.currentTimeMillis() - lastNotificationTime)) / 10000F));
+            notificationMessage.paint(g);
+            ((Graphics2D) g).setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
         }
     }
 

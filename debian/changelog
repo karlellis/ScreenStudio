@@ -1,3 +1,11 @@
+screenstudio (2.2.1) trusty; urgency=medium
+
+  * Adds: Twitch Alerts integration (Streaming Labels)
+  * Adds: Notifications over UDP
+  * Fixes: Fixes an tweaks
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sat, 14 May 2016 20:01:48 +0200
+
 screenstudio (2.2.0) trusty; urgency=medium
 
   * Adds: New compositing engine
