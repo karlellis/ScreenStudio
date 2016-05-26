@@ -1,3 +1,12 @@
+screenstudio (2.2.2) trusty; urgency=medium
+
+  * Adds: Added new Webcam only mode
+  * Adds: Can now stream without panel for Desktop + Webcam
+  * Adds: Support for relative images (img src="./logo.png") instead of full path (file:///home...)
+  * Adds: Support for viewing in Panel mode (Left, Right) or Banner mode (Top, Bottom)
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Thu, 26 May 2016 17:19:12 +0200
+
 screenstudio (2.2.1) trusty; urgency=medium
 
   * Adds: Twitch Alerts integration (Streaming Labels)

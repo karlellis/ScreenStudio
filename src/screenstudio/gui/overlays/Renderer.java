@@ -17,11 +17,13 @@
 package screenstudio.gui.overlays;
 
 import java.awt.AlphaComposite;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +46,7 @@ import screenstudio.sources.WebcamViewer;
  */
 public class Renderer implements NotificationListener {
 
-    private WebcamViewer mViewer;
+    private WebcamViewer mWebcam;
     private DesktopViewer mDesktop;
     private long startingTime;
     private long showEndTime;
@@ -59,6 +61,7 @@ public class Renderer implements NotificationListener {
     private UDPNotifications notifications;
     private long lastNotificationTime = 0;
     private JLabel notificationMessage = null;
+    private String homeFolder = "";
 
     private int desktopX = 0;
     private int desktopY = 0;
@@ -67,6 +70,8 @@ public class Renderer implements NotificationListener {
     private int webcamX = 0;
     private int webcamY = 0;
     private int textSize = 0;
+
+    private boolean mWebcamFocus = false;
 
     @Override
     public void received(String message) {
@@ -116,6 +121,14 @@ public class Renderer implements NotificationListener {
         return mDesktop.getImage().getHeight(null);
     }
 
+    public void setWebcamFocus(boolean focus) {
+        mWebcamFocus = focus && mWebcam != null && !"WEBCAM".equals(mDesktop.getId());
+    }
+
+    public boolean isWebcamFocus() {
+        return mWebcamFocus;
+    }
+
     private void setPositions() {
         desktopX = 0;
         desktopY = 0;
@@ -125,34 +138,51 @@ public class Renderer implements NotificationListener {
         webcamY = 0;
         switch (panelLocation) {
             case Top:
-                desktopY = textBuffer.getHeight();
-                if (mViewer != null) {
+
+                if (textBuffer != null) {
+                    desktopY = textBuffer.getHeight();
+                }
+                if (mWebcam != null) {
                     switch (webcamLocation) {
                         case Top:
                         case Left:
-                            textX = mViewer.getImage().getWidth(null);
+                            textX = mWebcam.getImage().getWidth(null);
                             break;
                         case Bottom:
                         case Right:
-                            webcamX = textBuffer.getWidth();
+                            if (textBuffer != null) {
+                                webcamX = textBuffer.getWidth();
+                            } else {
+                                webcamX = mDesktop.getImage().getWidth(null) - mWebcam.getImage().getWidth(null);
+                            }
                             break;
                     }
                 }
                 break;
             case Bottom:
-                if (mViewer != null) {
+                if (mWebcam != null) {
                     switch (webcamLocation) {
                         case Top:
                         case Left:
-                            textX = mViewer.getImage().getWidth(null);
-                            textY = mViewer.getImage().getHeight(null);
-                            webcamY = mDesktop.getImage().getHeight(null);
+                            textX = mWebcam.getImage().getWidth(null);
+                            textY = mWebcam.getImage().getHeight(null);
+                            if (textBuffer != null) {
+                                webcamY = mDesktop.getImage().getHeight(null);
+                            } else {
+                                webcamY = mDesktop.getImage().getHeight(null) - mWebcam.getImage().getHeight(null);
+                            }
                             break;
                         case Bottom:
                         case Right:
                             textY = mDesktop.getImage().getHeight(null);
-                            webcamX = textBuffer.getWidth();
-                            webcamY = mDesktop.getImage().getHeight(null);
+                            if (textBuffer != null) {
+                                webcamX = textBuffer.getWidth();
+                                webcamY = mDesktop.getImage().getHeight(null);
+                            } else {
+                                webcamX = mDesktop.getImage().getWidth(null) - mWebcam.getImage().getWidth(null);
+                                webcamY = mDesktop.getImage().getHeight(null) - mWebcam.getImage().getHeight(null);
+                            }
+
                             break;
                     }
                 } else {
@@ -160,36 +190,51 @@ public class Renderer implements NotificationListener {
                 }
                 break;
             case Left:
-                desktopX = textBuffer.getWidth();
+                if (textBuffer != null) {
+                    desktopX = textBuffer.getWidth();
+                }
 
-                if (mViewer != null) {
+                if (mWebcam != null) {
                     switch (webcamLocation) {
                         case Top:
                         case Left:
-                            textX = mViewer.getImage().getHeight(null);
+                            textX = mWebcam.getImage().getHeight(null);
                             break;
                         case Bottom:
                         case Right:
-                            webcamY = textBuffer.getHeight();
+                            if (textBuffer != null) {
+                                webcamY = textBuffer.getHeight();
+                            } else {
+                                webcamY = mDesktop.getImage().getHeight(null) - mWebcam.getImage().getHeight(null);
+                            }
 
                             break;
                     }
                 }
                 break;
             case Right:
-                if (mViewer != null) {
+                if (mWebcam != null) {
                     switch (webcamLocation) {
                         case Top:
                         case Left:
                             textX = mDesktop.getImage().getWidth(null);
-                            textY = mViewer.getImage().getHeight(null);
-                            webcamX = mDesktop.getImage().getWidth(null);
+                            textY = mWebcam.getImage().getHeight(null);
+                            if (textBuffer != null) {
+                                webcamX = mDesktop.getImage().getWidth(null);
+                            } else {
+                                webcamX = mDesktop.getImage().getWidth(null) - mWebcam.getImage().getWidth(null);
+                            }
                             break;
                         case Bottom:
                         case Right:
                             textX = mDesktop.getImage().getWidth(null);
-                            webcamX = mDesktop.getImage().getWidth(null);
-                            webcamY = textBuffer.getHeight();
+                            if (textBuffer != null) {
+                                webcamX = mDesktop.getImage().getWidth(null);
+                                webcamY = textBuffer.getHeight();
+                            } else {
+                                webcamX = mDesktop.getImage().getWidth(null) - mWebcam.getImage().getWidth(null);
+                                webcamY = mDesktop.getImage().getHeight(null) - mWebcam.getImage().getHeight(null);
+                            }
                             break;
                     }
                 } else {
@@ -197,10 +242,10 @@ public class Renderer implements NotificationListener {
                 }
                 break;
         }
-//        System.out.println("Desktop X,Y: " + desktopX + "," + desktopY);
-//        System.out.println("Text X,Y: " + textX + "," + textY);
-//        System.out.println("Webcam X,Y: " + webcamX + "," + webcamY);
-
+        if (mDesktop.getId().equals("WEBCAM")) {
+            webcamX = desktopX;
+            webcamY = desktopY;
+        }
     }
 
     public Renderer(PanelLocation location, int panelSize, screenstudio.sources.Webcam webcam, Screen screen, int showDuration) {
@@ -209,23 +254,26 @@ public class Renderer implements NotificationListener {
         textSize = panelSize;
         notifications = new UDPNotifications(this);
         notificationMessage = new JLabel("<HTML><BODY></BODY></HTML>");
+        if (screen.getId().equals("WEBCAM") && webcam != null) {
+            screen.setSize(new Rectangle(webcam.getWidth(), webcam.getHeight()));
+        }
         mDesktop = new DesktopViewer(screen);
         new Thread(mDesktop).start();
-        mViewer = null;
-
+        mWebcam = null;
         if (webcam != null) {
-            mViewer = new WebcamViewer(screen, new File(webcam.getDevice()), webcam.getWidth(), webcam.getHeight(), webcam.getFps());
-            new Thread(mViewer).start();
+            mWebcam = new WebcamViewer(screen, new File(webcam.getDevice()), webcam.getWidth(), webcam.getHeight(), webcam.getFps());
+            new Thread(mWebcam).start();
         }
         lblText = new JLabel();
         panelLocation = location;
         if (webcam != null) {
             webcamLocation = webcam.getLocation();
         }
+
         switch (location) {
             case Top:
             case Bottom:
-                if (webcam != null) {
+                if (webcam != null && !screen.getId().equals("WEBCAM")) {
                     lblText.setPreferredSize(new Dimension(screen.getWidth() - webcam.getWidth(), webcam.getHeight()));
                 } else {
                     lblText.setPreferredSize(new Dimension(screen.getWidth(), textSize));
@@ -233,7 +281,7 @@ public class Renderer implements NotificationListener {
                 break;
             case Left:
             case Right:
-                if (webcam != null) {
+                if (webcam != null && !screen.getId().equals("WEBCAM")) {
                     lblText.setPreferredSize(new Dimension(webcam.getWidth(), screen.getHeight() - webcam.getHeight()));
                 } else {
                     lblText.setPreferredSize(new Dimension(textSize, screen.getHeight()));
@@ -242,7 +290,11 @@ public class Renderer implements NotificationListener {
         }
         lblText.setSize(lblText.getPreferredSize());
         lblText.setLocation(0, 0);
-        textBuffer = new BufferedImage((int) lblText.getPreferredSize().getWidth(), (int) lblText.getPreferredSize().getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+        if (panelSize > 0) {
+            textBuffer = new BufferedImage((int) lblText.getPreferredSize().getWidth(), (int) lblText.getPreferredSize().getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+        } else {
+            textBuffer = null;
+        }
         notificationMessage.setPreferredSize(new Dimension(screen.getWidth(), 150));
         notificationMessage.setVisible(true);
         notificationMessage.setSize(notificationMessage.getPreferredSize());
@@ -262,26 +314,43 @@ public class Renderer implements NotificationListener {
     public void stop() {
         mStopMe = true;
         mDesktop.stop();
-        if (mViewer != null) {
-            mViewer.stop();
+        if (mWebcam != null) {
+            mWebcam.stop();
         }
     }
 
     public void paint(Graphics g) {
         if (System.currentTimeMillis() > nextTextUpdate) {
             setPositions();
-            lblText.setText(replaceTags(mText));
-            lblText.revalidate();
+            if (textBuffer != null) {
+                lblText.setText(replaceTags(mText));
+                lblText.revalidate();
+            }
             nextTextUpdate = System.currentTimeMillis() + 1000;
         }
-        lblText.paint(textBuffer.getGraphics());
-        Image desktop = mDesktop.getImage();
-
-        g.drawImage(desktop, desktopX, desktopY, null);
-        g.drawImage(textBuffer, textX, textY, null);
-        if (mViewer != null) {
-            Image webcam = mViewer.getImage();
-            g.drawImage(webcam, webcamX, webcamY, null);
+        if (!mDesktop.getId().equals("WEBCAM")) {
+            Image desktop = mDesktop.getImage();
+            g.drawImage(desktop, desktopX, desktopY, null);
+        }
+        if (textBuffer != null) {
+            lblText.paint(textBuffer.getGraphics());
+            g.drawImage(textBuffer, textX, textY, null);
+        }
+        if (mWebcam != null) {
+            Image webcam = mWebcam.getImage();
+            if (mWebcamFocus) {
+                int w = webcam.getWidth(null) * 3;
+                int h = webcam.getHeight(null) * 3;
+                int x = desktopX + ((mDesktop.getImage().getWidth(null) - w) / 2);
+                int y = desktopY + ((mDesktop.getImage().getHeight(null) - h) / 2);
+                g.drawImage(webcam.getScaledInstance(w, h, Image.SCALE_FAST), x, y, null);
+                if (textBuffer != null) {
+                    g.setColor(Color.darkGray);
+                    g.fillRect(webcamX, webcamY, webcam.getWidth(null), webcam.getHeight(null));
+                }
+            } else {
+                g.drawImage(webcam, webcamX, webcamY, null);
+            }
         }
         if (System.currentTimeMillis() - lastNotificationTime <= 10000) {
             ((Graphics2D) g).setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (10000 - (System.currentTimeMillis() - lastNotificationTime)) / 10000F));
@@ -290,8 +359,9 @@ public class Renderer implements NotificationListener {
         }
     }
 
-    public void setText(String text, String userTextContent, String command) {
+    public void setText(String text, String userTextContent, String command, String homeFolder) {
         mIsUpdating = true;
+        this.homeFolder = homeFolder;
         mText = text.replaceAll("@TEXT", userTextContent);
         if (command.length() > 0) {
             String commandContent = getCommandContent(command);
@@ -335,6 +405,11 @@ public class Renderer implements NotificationListener {
         retValue = retValue.replaceAll("@RECORDINGTIME", (System.currentTimeMillis() - startingTime) / 60000 + " min");
         retValue = retValue.replaceAll("@STARTTIME", formatTime.format(new Date(startingTime)));
         retValue = retValue.replaceAll("@REMAININGTIME", (((showEndTime - System.currentTimeMillis()) / 60000) + 1) + " min");
+        if (!homeFolder.isEmpty()) {
+            String parentPath = "file://" + homeFolder + "";
+            parentPath = parentPath.replaceAll("\\.\\/", "");
+            retValue = retValue.replaceAll("\\.\\/", parentPath + "/");
+        }
         return retValue;
     }
 
