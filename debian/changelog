@@ -1,3 +1,9 @@
+screenstudio (2.2.3) trusty; urgency=medium
+
+  * Fixes: Fixed error for capturing second screen
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Fri, 27 May 2016 16:58:41 +0200
+
 screenstudio (2.2.2) trusty; urgency=medium
 
   * Adds: Added new Webcam only mode
