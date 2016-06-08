@@ -6,7 +6,7 @@ rm src/screenstudio/Version.java
 mv src/screenstudio/Version.java.temp src/screenstudio/Version.java
 ant -Dnb.internal.action.name=rebuild clean
 rm Capture/*.*
-tar -zcvf "../ScreenStudio-Ubuntu-$VERSION-src.tar.gz" .
+tar --exclude-vcs -zcvf "../ScreenStudio-Ubuntu-$VERSION-src.tar.gz" .
 ant -Dnb.internal.action.name=jar
 echo "Building Ubuntu app"
 echo "Removing previous build..."
@@ -23,6 +23,8 @@ echo "Copying logo file..."
 cp apps/Ubuntu/logo.png ScreenStudio.Ubuntu/logo.png
 cp apps/default.html ScreenStudio.Ubuntu/Overlays/default.html
 cp apps/logo.png ScreenStudio.Ubuntu/Overlays/logo.png
+cp apps/privacy.png ScreenStudio.Ubuntu/Overlays/privacy.png
+cp apps/watermark.png ScreenStudio.Ubuntu/Overlays/watermark.png
 cp apps/Ubuntu/ScreenStudio.sh ScreenStudio.Ubuntu/ScreenStudio.sh
 cp apps/README.txt ScreenStudio.Ubuntu/README.txt
 cp RTMP/* ScreenStudio.Ubuntu/RTMP

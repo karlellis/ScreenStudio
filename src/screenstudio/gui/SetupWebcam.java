@@ -49,6 +49,7 @@ public class SetupWebcam extends javax.swing.JDialog {
         this.setTitle(webcam.toString());
         spinWidth.setValue(webcam.getWidth());
         spinHeight.setValue(webcam.getHeight());
+        chkGreenScreenMode.setSelected(webcam.isGreenScreen());
 
     }
 
@@ -69,6 +70,7 @@ public class SetupWebcam extends javax.swing.JDialog {
         spinHeight = new javax.swing.JSpinner();
         jLabel3 = new javax.swing.JLabel();
         cboLocation = new javax.swing.JComboBox<>();
+        chkGreenScreenMode = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
@@ -103,6 +105,13 @@ public class SetupWebcam extends javax.swing.JDialog {
             }
         });
 
+        chkGreenScreenMode.setText("Green Screen Mode");
+        chkGreenScreenMode.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                chkGreenScreenModeActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -124,7 +133,10 @@ public class SetupWebcam extends javax.swing.JDialog {
                                     .addComponent(spinHeight, javax.swing.GroupLayout.DEFAULT_SIZE, 100, Short.MAX_VALUE)
                                     .addComponent(spinWidth)
                                     .addComponent(cboLocation, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
-                        .addGap(0, 0, Short.MAX_VALUE)))
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGap(0, 17, Short.MAX_VALUE)
+                        .addComponent(chkGreenScreenMode)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -146,7 +158,9 @@ public class SetupWebcam extends javax.swing.JDialog {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel3)
                     .addComponent(cboLocation, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 31, Short.MAX_VALUE)
+                .addComponent(chkGreenScreenMode)
+                .addContainerGap())
         );
 
         pack();
@@ -171,8 +185,13 @@ public class SetupWebcam extends javax.swing.JDialog {
 
     }//GEN-LAST:event_cboLocationActionPerformed
 
+    private void chkGreenScreenModeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chkGreenScreenModeActionPerformed
+        webcam.setGreenScreen(chkGreenScreenMode.isSelected());
+    }//GEN-LAST:event_chkGreenScreenModeActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JComboBox<Renderer.WebcamLocation> cboLocation;
+    private javax.swing.JCheckBox chkGreenScreenMode;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
