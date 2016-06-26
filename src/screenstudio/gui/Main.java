@@ -159,6 +159,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                     o.setHeight(Integer.parseInt(target.webcamHeight));
                     o.setOffset(Double.parseDouble(target.webcamOffset));
                     o.setGreenScreen("true".equals(target.webcamGreenScreenMode));
+                    o.setGreenSensitivity(new Integer(target.greenSensitivity));
                 }
                 o.setLocation(Renderer.WebcamLocation.valueOf(target.webcamLocation));
             }
@@ -566,10 +567,14 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
     }
 
     private void monitorProcess() {
+        long lastUpdate = 0;
         while (streamProcess != null) {
             try {
-                lblMessages.setText("Recording...");
-                updateTrayIcon();
+                if (System.currentTimeMillis() - lastUpdate > 60000) {
+                    lblMessages.setText("Recording...");
+                    updateTrayIcon();
+                    lastUpdate = System.currentTimeMillis();
+                }
                 System.out.println("Exit Code: " + streamProcess.exitValue());
                 stopStream("An error occured...");
             } catch (Exception ex) {
@@ -1354,6 +1359,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                 } else {
                     target.webcamGreenScreenMode = "false";
                 }
+                target.greenSensitivity = w.getGcreenSensitivity() + "";
             } else {
                 target.webcamDevice = "";
             }
@@ -1415,12 +1421,14 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
     private void popTrayIconPrivacyModeItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_popTrayIconPrivacyModeItemStateChanged
         if (!isLoading && runningOverlay != null) {
             runningOverlay.setPrivateMode(ItemEvent.SELECTED == evt.getStateChange());
+            updateTrayIcon();
         }
     }//GEN-LAST:event_popTrayIconPrivacyModeItemStateChanged
 
     private void popChkWebcamFocusItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_popChkWebcamFocusItemStateChanged
         if (!isLoading && runningOverlay != null) {
             runningOverlay.setWebcamFocus(ItemEvent.SELECTED == evt.getStateChange());
+            updateTrayIcon();
         }
     }//GEN-LAST:event_popChkWebcamFocusItemStateChanged
 
@@ -1575,6 +1583,7 @@ public class Main extends javax.swing.JFrame implements ItemListener, HotKeyList
                 CheckboxMenuItem item = (CheckboxMenuItem) popTrayIconPrivacyMode;
                 item.setState(runningOverlay.isPrivateMode());
                 isLoading = false;
+                updateTrayIcon();
             }
         }
 
