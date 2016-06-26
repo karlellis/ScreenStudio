@@ -1,3 +1,9 @@
+screenstudio (2.2.6) trusty; urgency=medium
+
+  * Fixes: Fixed issue with display detection
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sun, 26 Jun 2016 19:43:28 +0200
+
 screenstudio (2.2.5) trusty; urgency=medium
 
   * Adds: Added settings for green screen sensitivity
