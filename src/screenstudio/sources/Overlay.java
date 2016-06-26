@@ -35,7 +35,7 @@ public class Overlay implements Runnable {
 
     private File mContent;
     private String mUserTextContent;
-    private final Renderer mRenderer;
+    private final Renderer htmlRenderer;
     private final int mFPS;
     private boolean stopME = false;
     private OverlayUnix mOutput = null;
@@ -46,29 +46,26 @@ public class Overlay implements Runnable {
         mContent = content;
         mCommand = command;
         mUserTextContent = userTextContent;
-        mRenderer = new Renderer(location, panelSize, webcam, screen, showDurationTime);
+        htmlRenderer = new Renderer(location, panelSize, webcam, screen, showDurationTime);
         mFPS = screen.getFps();
         new Thread(this).start();
-        mOutput = new OverlayUnix(mRenderer, mFPS);
+        mOutput = new OverlayUnix(htmlRenderer, mFPS);
     }
 
     public int getNotificationPort() {
-        return mRenderer.getPort();
+        return htmlRenderer.getPort();
     }
 
     public void setWebcamFocus(boolean focus){
-        mRenderer.setWebcamFocus(focus);
+        htmlRenderer.setWebcamFocus(focus);
     }
     public boolean isWebcamFocus(){
-        return mRenderer.isWebcamFocus();
+        return htmlRenderer.isWebcamFocus();
     }
     public boolean isPrivateMode() {
         return mIsPrivateMode;
     }
 
-    public void setGreenScreenSensitivity(int s){
-        mRenderer.setGreenScreenSensitivity(s);
-    }
     public void setPrivateMode(boolean value) {
         mIsPrivateMode = value;
         mOutput.setPrivateMode(value);
@@ -95,11 +92,11 @@ public class Overlay implements Runnable {
     }
 
     public int getWidth() {
-        return mRenderer.getWidth();
+        return htmlRenderer.getWidth();
     }
 
     public int getHeight() {
-        return mRenderer.getHeight();
+        return htmlRenderer.getHeight();
     }
 
     public String OutputURL() {
@@ -159,7 +156,7 @@ public class Overlay implements Runnable {
     public void run() {
         stopME = false;
         try {
-            mRenderer.setText("<html></html>", "", "","");
+            htmlRenderer.setText("<html></html>", "", "","");
             while (!stopME) {
                 if (mContent != null) {
                     // Read content into renderer...
@@ -168,7 +165,7 @@ public class Overlay implements Runnable {
                     in.read(data);
                     if (mContent.getName().endsWith("html")) {
                         //Reading content from a local html file
-                        mRenderer.setText(new String(data), mUserTextContent, mCommand,mContent.getParentFile().getAbsolutePath());
+                        htmlRenderer.setText(new String(data), mUserTextContent, mCommand,mContent.getParentFile().getAbsolutePath());
                     } else if (mContent.getName().endsWith("url")) {
                         //Reading content from a webpage...
                         data = new byte[65536];
@@ -181,13 +178,13 @@ public class Overlay implements Runnable {
                             html.append(new String(data, 0, count));
                             count = in.read(data);
                         }
-                        mRenderer.setText(html.toString(), mUserTextContent, mCommand,addr);
+                        htmlRenderer.setText(html.toString(), mUserTextContent, mCommand,addr);
                     } else {
                         //Reading raw content from a text file
-                        mRenderer.setText("<html>" + new String(data).replaceAll("\n", "<br>") + "</html>", mUserTextContent, mCommand,"");
+                        htmlRenderer.setText("<html>" + new String(data).replaceAll("\n", "<br>") + "</html>", mUserTextContent, mCommand,"");
                     }
                     in.close();
-                    //System.out.println(mRenderer.getText());
+                    //System.out.println(htmlRenderer.getText());
                 }
                 try {
                     Thread.sleep(1000);
@@ -201,7 +198,7 @@ public class Overlay implements Runnable {
         if (mOutput != null) {
             mOutput.stop();
         }
-        mRenderer.stop();
+        htmlRenderer.stop();
         System.out.println("Exiting Overlay rendering...");
 
     }

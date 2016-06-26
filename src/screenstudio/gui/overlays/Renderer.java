@@ -71,7 +71,6 @@ public class Renderer implements NotificationListener {
     private int webcamX = 0;
     private int webcamY = 0;
     private int textSize = 0;
-    private int mGreenScreenSensitivity = 1;
 
     private boolean mWebcamFocus = false;
 
@@ -123,9 +122,6 @@ public class Renderer implements NotificationListener {
         return mDesktop.getImage().getHeight(null);
     }
 
-    public void setGreenScreenSensitivity(int s){
-        mGreenScreenSensitivity = s;
-    }
     public void setWebcamFocus(boolean focus) {
         mWebcamFocus = focus && mWebcam != null && !"WEBCAM".equals(mDesktop.getId());
     }
@@ -267,7 +263,6 @@ public class Renderer implements NotificationListener {
         mWebcam = null;
         if (webcam != null) {
             if (webcam.isGreenScreen()) {
-                webcam.setGreenSensitivity(webcam.getGcreenSensitivity());
                 webcamGreenScreen = new BufferedImage(webcam.getWidth(), webcam.getHeight(), BufferedImage.TYPE_INT_ARGB);
             }
             mWebcam = new WebcamViewer(screen, new File(webcam.getDevice()), webcam.getWidth(), webcam.getHeight(), webcam.getFps(), webcam.isGreenScreen());
@@ -362,11 +357,11 @@ public class Renderer implements NotificationListener {
                 for (int x = 0; x < webcamGreenScreen.getWidth(); x++) {
                     for (int y = 0; y < webcamGreenScreen.getHeight(); y++) {
                         int c = webcamGreenScreen.getRGB(x, y);
-                        int r = ((c & 0x00FF0000) >> 16) / 64;
-                        int gr = ((c & 0x0000FF00) >> 8) / 64;
+                        int r = ((c & 0x00FF0000) >> 16) / 32;
+                        int gr = ((c & 0x0000FF00) >> 8) / 32;
                         int b = (c & 0x000000FF) / 32;
 
-                        if (r < (gr-mGreenScreenSensitivity) && b < (gr-mGreenScreenSensitivity)) {
+                        if (r < (gr-1) && b < (gr-1)) {
                             webcamGreenScreen.setRGB(x, y, 0);
                         }
                     }

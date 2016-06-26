@@ -127,7 +127,6 @@ public class Targets {
     public String command = "";
     public String waterMarkFile = "";
     public String twitchalertsfolder = "/home/user/twitchalerts";
-    public String greenSensitivity = "1";
     
     private final TreeMap<String, String> keys = new TreeMap();
 // </editor-fold>
