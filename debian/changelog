@@ -1,3 +1,9 @@
+screenstudio (2.2.8) trusty; urgency=medium
+
+  * Fixes: Fixed issue when packaged in PPA
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Fri, 01 Jul 2016 19:04:36 +0200
+
 screenstudio (2.2.7) trusty; urgency=medium
 
   * Fixes: Fixed issue with display detection
