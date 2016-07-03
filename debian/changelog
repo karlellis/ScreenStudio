@@ -1,3 +1,9 @@
+screenstudio (2.2.9) trusty; urgency=medium
+
+  * Fixes: Fixed layout when no panel is displayed
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sun, 03 Jul 2016 06:57:42 +0200
+
 screenstudio (2.2.8) trusty; urgency=medium
 
   * Fixes: Fixed issue when packaged in PPA
