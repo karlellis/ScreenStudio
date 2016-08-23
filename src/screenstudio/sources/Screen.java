@@ -20,12 +20,10 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import screenstudio.encoder.FFMpeg;
 
 /**
  *
@@ -37,7 +35,6 @@ public class Screen {
     private String id = "";
     private String name = "None";
     private int screenIndex = -1;
-    private int fps = 10;
 
     @Override
     public String toString() {
@@ -53,7 +50,7 @@ public class Screen {
     }
 
     public String getDetailledLabel() {
-        return getLabel() + " (" + (int) this.size.getWidth() + "X" + (int) this.size.getHeight() + ") @" + fps + " FPS";
+        return getLabel() + " (" + (int) this.size.getWidth() + "X" + (int) this.size.getHeight() + ")";
     }
 
     public static Screen[] getSources() throws IOException, InterruptedException {
@@ -95,32 +92,6 @@ public class Screen {
                 list.add(s);
             }
 
-        }
-        Screen webcam = new Screen();
-        webcam.setScreenIndex(999);
-        webcam.setId("WEBCAM");
-        webcam.setName("Webcam");
-        webcam.setSize(new Rectangle(0, 0, 640, 480));
-        list.add(webcam);
-        File home = new FFMpeg().getHome();
-        if (!home.exists()) {
-            home.mkdir();
-        }
-        File overlays = new File(home, "Overlays");
-        if (!overlays.exists()) {
-            overlays.mkdir();
-        }
-        if (overlays.exists()) {
-            for (File f : overlays.listFiles()) {
-                if (f.getName().endsWith(".screen")) {
-                    Screen remote = new Screen();
-                    remote.setScreenIndex(1000);
-                    remote.setId(f.getAbsolutePath());
-                    remote.setName(f.getName());
-                    remote.setSize(new Rectangle(0, 0, 720, 480));
-                    list.add(remote);
-                }
-            }
         }
         return list.toArray(new Screen[list.size()]);
     }
@@ -186,20 +157,6 @@ public class Screen {
      */
     public void setId(String id) {
         this.id = id;
-    }
-
-    /**
-     * @return the fps
-     */
-    public int getFps() {
-        return fps;
-    }
-
-    /**
-     * @param fps the fps to set
-     */
-    public void setFps(int fps) {
-        this.fps = fps;
     }
 
     /**

@@ -16,26 +16,25 @@
  */
 package screenstudio.encoder;
 
-import java.awt.Rectangle;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import screenstudio.gui.overlays.Renderer;
-import screenstudio.sources.Overlay;
+import screenstudio.sources.Compositor;
 import screenstudio.sources.Screen;
-import screenstudio.targets.SIZES;
-import screenstudio.targets.Targets;
-import screenstudio.targets.Targets.FORMATS;
 
 /**
  *
  * @author patrick
  */
-public class FFMpeg {
+public class FFMpeg implements Runnable {
 
     /**
      * List of supported presets for FFMPEG
@@ -64,66 +63,64 @@ public class FFMpeg {
         Audio48K
     }
 
+    public enum RunningState {
+        Running,
+        Stopped,
+        Error
+
+    }
+
+    private RunningState state = RunningState.Stopped;
+    private String lastErrorMessage = "";
+
     private String bin = "ffmpeg  ";
     private String nonVerboseMode = " -nostats -loglevel 0 ";
-    //Main input
-    private String captureWidth = "720";
-    private String captureHeight = "480";
-    private String captureX = "0";
-    private String captureY = "0";
-    private String mainInput = ":0.0";
-    private String mainFormat = "x11grab";
-    //Overlay
-    private String overlayInput = "";
-    private final String overlayFormat = "rawvideo -pix_fmt bgr24";
-    private Overlay runningOverlay = null;
-    // Audio
-    private String audioRate = "44100";
+    private String desktopFormat = "x11grab";
+    private String webcamFormat = "v4l2";
     private String audioInput = "default";
     private String audioFormat = "pulse";
+    private File mHome = new File(".");
+    private String mThreading = "";
+    private String output = "Capture/capture.mp4";
+    private boolean mStopMe = false;
+    private boolean mDebugMode = false;
+    private String mITSOffset = "";
+
+    private final String compositorFormat = "rawvideo -pix_fmt bgr24";
+    private final Compositor compositor;
+    // Audio
+    private String audioRate = "44100";
 
     //Output
-    private String framerate = "10";
     private String videoBitrate = "9000";
-    private String audioBitrate = "128";
+    private final String audioBitrate = "128";
     private String videoEncoder = "libx264";
     private String audioEncoder = "aac";
     private String muxer = "mp4";
     private String preset = "ultrafast";
     private String strictSetting = "-2";
-    private String outputWidth = "720";
-    private String outputHeight = "480";
-    private File defaultCaptureFolder = new File(".");
-    private String output = "Capture/capture.mp4";
-    private File mHome = new File(".");
-    private String mThreading = "";
-    private File mWatermarkFile = null;
-
-    private Rectangle overlaySetting = new Rectangle(0, 0);
 
     /**
      * Main class wrapper for FFMpeg
+     *
+     * @param c
      */
-    public FFMpeg() {
+    public FFMpeg(Compositor c) {
         //Creating default folder for capturing videos...
-        defaultCaptureFolder = new File("Capture");
         initDefaults();
-        if (!defaultCaptureFolder.exists()) {
-            defaultCaptureFolder.mkdir();
-        }
-        output = new File(defaultCaptureFolder, "capture.flv").getAbsolutePath();
+        compositor = c;
     }
 
     public File getHome() {
         return mHome;
     }
 
-    public File getWaterMark() {
-        return mWatermarkFile;
+    public void stop() {
+        mStopMe = true;
     }
 
-    public void setWaterMark(File image) {
-        mWatermarkFile = image;
+    public void setDebugMode(boolean value) {
+        mDebugMode = value;
     }
 
     /**
@@ -132,7 +129,7 @@ public class FFMpeg {
      * @param rate : Audio rate for the output
      * @param input : device to use
      */
-    public void setAudio(AudioRate rate, String input) {
+    public void setAudio(AudioRate rate, String input, Float offset) {
         switch (rate) {
             case Audio44K:
                 audioRate = "44100";
@@ -148,72 +145,57 @@ public class FFMpeg {
                 break;
         }
         audioInput = input;
-    }
-
-    /**
-     * Set the Overlay to use
-     *
-     * @param overlay
-     */
-    public void setOverlay(Overlay overlay) {
-        runningOverlay = overlay;
-        if (overlay == null) {
-            overlayInput = "";
-            overlaySetting = null;
+        if (offset != 0) {
+            mITSOffset = " -itsoffset " + offset.toString() + " ";
         } else {
-            overlayInput = overlay.OutputURL();
-            overlaySetting = new Rectangle(0, 0, overlay.getWidth(), overlay.getHeight());
+            mITSOffset = "";
         }
+
     }
 
-    public Overlay getOverlay() {
-        return runningOverlay;
+    public RunningState getState() {
+        return state;
     }
 
-    /**
-     * Set the capture format to use
-     *
-     * @param device : The display
-     * @param capX : The left location
-     * @param capY : The top location
-     */
-    public void setCaptureFormat(String device, int capX, int capY) {
-        mainInput = device;
-        captureX = String.valueOf(capX);
-        captureY = String.valueOf(capY);
+    public String getLastErrorMessage() {
+        return lastErrorMessage;
     }
 
     /**
      * Set the output format of the video file/stream
      *
      * @param format
-     * @param target
+     * @param p
+     * @param videoBitrate
+     * @param server
+     * @param key
+     * @param outputFolder
      */
-    public void setOutputFormat(FORMATS format, Targets target) {
+    public void setOutputFormat(FORMATS format, Presets p, int videoBitrate, String server, String key, File outputFolder) {
         switch (format) {
             case FLV:
                 muxer = "flv";
                 videoEncoder = "libx264";
                 audioEncoder = "libmp3lame";
-                output = new File(defaultCaptureFolder, generateRandomName() + ".flv").getAbsolutePath();
+                output = new File(outputFolder, generateRandomName() + ".flv").getAbsolutePath();
                 break;
             case MP4:
                 muxer = "mp4";
                 videoEncoder = "libx264";
                 audioEncoder = "mp3";
-                output = new File(defaultCaptureFolder, generateRandomName() + ".mp4").getAbsolutePath();
+                output = new File(outputFolder, generateRandomName() + ".mp4").getAbsolutePath();
                 break;
             case MOV:
                 muxer = "mov";
                 videoEncoder = "libx264";
                 audioEncoder = "mp3";
-                output = new File(defaultCaptureFolder, generateRandomName() + ".mov").getAbsolutePath();
+                output = new File(outputFolder, generateRandomName() + ".mov").getAbsolutePath();
                 break;
             case TS:
                 muxer = "mpegts";
                 videoEncoder = "mpeg2video";
                 audioEncoder = "mp2";
-                output = new File(defaultCaptureFolder, generateRandomName() + ".ts").getAbsolutePath();
+                output = new File(outputFolder, generateRandomName() + ".ts").getAbsolutePath();
                 break;
             case RTMP:
             case HITBOX:
@@ -224,10 +206,10 @@ public class FFMpeg {
                 muxer = "flv";
                 videoEncoder = "libx264";
                 audioEncoder = "aac";
-                if (target.server.length() == 0) {
-                    output = target.getKey(format);
+                if (server.length() == 0) {
+                    output = key;
                 } else {
-                    output = target.server + "/" + target.getKey(format);
+                    output = server + "/" + key;
                 }
                 break;
             case BROADCAST:
@@ -237,35 +219,8 @@ public class FFMpeg {
                 output = "udp://255.255.255.255:8888?broadcast=1";
                 break;
         }
-        preset = target.outputPreset;
-        videoBitrate = target.outputVideoBitrate;
-    }
-
-    /**
-     * Set the audio bitate
-     *
-     * @param rate
-     */
-    public void setAudioBitrate(int rate) {
-        audioBitrate = String.valueOf(rate);
-    }
-
-    /**
-     * Set the video bitrate
-     *
-     * @param rate
-     */
-    public void setVideoBitrate(int rate) {
-        videoBitrate = String.valueOf(rate);
-    }
-
-    /**
-     * Set the capture framerate for the display
-     *
-     * @param rate
-     */
-    public void setFramerate(int rate) {
-        framerate = String.valueOf(rate);
+        preset = p.name();
+        this.videoBitrate = videoBitrate + "";
     }
 
     /**
@@ -275,56 +230,6 @@ public class FFMpeg {
      */
     public void setPreset(Presets p) {
         preset = p.name();
-    }
-
-    /**
-     * Set the output size of the video/stream encoding
-     *
-     * @param capWidth
-     * @param capHeight
-     * @param size
-     */
-    public void setOutputSize(int capWidth, int capHeight, SIZES size) {
-        captureWidth = String.valueOf(capWidth);
-        captureHeight = String.valueOf(capHeight);
-        int calculatedWidth;
-        switch (size) {
-            case SOURCE:
-                outputHeight = String.valueOf(capHeight);
-                outputWidth = String.valueOf(capWidth);
-                break;
-            case OUT_240P:
-                outputHeight = "240";
-                calculatedWidth = (capWidth * 240 / capHeight);
-                calculatedWidth += calculatedWidth % 2;
-                outputWidth = String.valueOf(calculatedWidth);
-                break;
-            case OUT_360P:
-                outputHeight = "360";
-                calculatedWidth = (capWidth * 360 / capHeight);
-                calculatedWidth += calculatedWidth % 2;
-                outputWidth = String.valueOf(calculatedWidth);
-                break;
-            case OUT_480P:
-                outputHeight = "480";
-                calculatedWidth = (capWidth * 480 / capHeight);
-                calculatedWidth += calculatedWidth % 2;
-                outputWidth = String.valueOf(calculatedWidth);
-                break;
-            case OUT_720P:
-                outputHeight = "720";
-                calculatedWidth = (capWidth * 720 / capHeight);
-                calculatedWidth += calculatedWidth % 2;
-                outputWidth = String.valueOf(calculatedWidth);
-                break;
-            case OUT_1080P:
-                outputHeight = "1080";
-                calculatedWidth = (capWidth * 1080 / capHeight);
-                calculatedWidth += calculatedWidth % 2;
-                outputWidth = String.valueOf(calculatedWidth);
-                break;
-        }
-
     }
 
     /**
@@ -358,55 +263,32 @@ public class FFMpeg {
     /**
      * Build the complete FFMpeg command from this object instance
      *
-     * @param panelLocation
      * @param debugMode : If enabled, verbose mode is activated
      * @return the full command for FFMpeg
      */
-    public String getCommand(Renderer.PanelLocation panelLocation, boolean debugMode) {
+    private String getCommand() {
         StringBuilder c = new StringBuilder();
         // Add binary path
         c.append(bin);
         // Enable debug mode
-        if (!debugMode) {
+        if (!mDebugMode) {
             c.append(nonVerboseMode);
         }
-        if (runningOverlay == null) {
-            // Capture Desktop
-            if (!"WEBCAM".equals(mainInput)) {
-                if (!Screen.isOSX()) {
-                    c.append(" -video_size ").append(captureWidth).append("x").append(captureHeight);
-                }
-                c.append(" -framerate ").append(framerate);
-                c.append(" ").append(mThreading).append(" -f ").append(mainFormat).append(" -i ").append(mainInput);
+        //compositor
+        c.append(" ").append(mThreading).append(" -f ").append(compositorFormat);
+        c.append(" -framerate ").append(compositor.getFPS());
+        c.append(" -video_size ").append(compositor.getWidth()).append("x").append(compositor.getHeight());
+        c.append(" -i @INPUT ");
 
-                if (!Screen.isOSX()) {
-                    if (captureX.length() > 0) {
-                        c.append("+").append(captureX).append(",").append(captureY);
-                    }
-                }
-            }
-        } else {
-            int w = (int) overlaySetting.getWidth();
-            int h = (int) overlaySetting.getHeight();
-            c.append(" ").append(mThreading).append(" -f ").append(overlayFormat);
-            c.append(" -framerate ").append(framerate);
-            c.append(" -video_size ").append(w).append("x").append(h);
-            c.append(" -i ").append(overlayInput);
-        }
-        // watermark
-        if (mWatermarkFile != null) {
-            c.append(" -f image2 -i ").append(mWatermarkFile.getAbsolutePath());
-            c.append(" -filter_complex [0:v][1:v]overlay=0:main_h-overlay_h");
-        }
         // Capture Audio
-        c.append(" -f ").append(audioFormat).append(" -i ").append(audioInput);
+        c.append(" -f ").append(audioFormat).append(mITSOffset).append(" -i ").append(audioInput);
         // Enabled strict settings
         if (strictSetting.length() > 0) {
             c.append(" -strict ").append(strictSetting);
         }
         // Output
-        c.append(" -r ").append(framerate);
-        c.append(" -s ").append(outputWidth).append("x").append(outputHeight);
+        c.append(" -r ").append(compositor.getFPS());
+        c.append(" -s ").append(compositor.getWidth()).append("x").append(compositor.getHeight());
         c.append(" -vb ").append(videoBitrate).append("k");
         c.append(" -pix_fmt yuv420p ");
         if (output.startsWith("rtmp://")) {
@@ -415,58 +297,235 @@ public class FFMpeg {
         c.append(" -ab ").append(audioBitrate).append("k").append(" -ar ").append(audioRate);
         c.append(" -vcodec ").append(videoEncoder);
         c.append(" -acodec ").append(audioEncoder);
-        if (preset.length() > 0) {
-            c.append(" -preset ").append(preset);
+        if (videoEncoder.equals("libx264")) {
+            if (preset.length() > 0) {
+                c.append(" -preset ").append(preset);
+            }
         }
-        String buffer = " -g " + (new Integer(framerate) * 2);
+        String buffer = " -g " + (compositor.getFPS() * 2);
+        c.append(" -bufsize ").append((new Integer(videoBitrate) * 2) + 2).append("k");
         c.append(buffer).append(" -f ").append(muxer).append(" ");
         c.append(output);
         // Set proper output
-        if (debugMode) {
+        if (mDebugMode) {
             System.out.println(c.toString());
         }
         return c.toString();
     }
 
-    private void initDefaults() {
-        File folder = new File("FFMPEG");
-        if (folder.exists()) {
-            File file;
-            if (Screen.isOSX()) {
-                file = new File(folder, "osx.properties");
-            } else {
-                file = new File(folder, "default.properties");
-            }
-            if (file.exists()) {
-                try {
-                    Properties p = new Properties();
-                    try (InputStream in = file.toURI().toURL().openStream()) {
-                        p.load(in);
-                    }
-                    bin = p.getProperty("BIN", "ffmpeg") + " ";
-                    nonVerboseMode = p.getProperty("NONVERBOSEMODE", " -nostats -loglevel 0 ") + " ";
-                    //Main inpu
-                    mainFormat = p.getProperty("DESKTOPFORMAT", "x11grab") + " ";
-                    // Audio
-                    audioInput = p.getProperty("DEFAULTAUDIO", "default") + " ";
-                    audioFormat = p.getProperty("AUDIOFORMAT", "pulse") + " ";
-                    //Output
-                    strictSetting = p.getProperty("STRICTSETTINGS", "-2") + " ";
-                    //HOME
-                    mHome = new File(p.getProperty("HOME", ".").replaceAll("~", System.getProperty("user.home")));
-                    if (!mHome.exists()) {
-                        mHome.mkdirs();
-                    }
-                    defaultCaptureFolder = new File(mHome, "Capture");
-                    mThreading = p.getProperty("THREADING", mThreading);
+    public String getBin() {
+        return bin + nonVerboseMode;
+    }
 
+    public String getDesktopFormat() {
+        return desktopFormat;
+    }
+
+    public String getWebcamFormat() {
+        return webcamFormat;
+    }
+
+    private void initDefaults() {
+
+        InputStream in = null;
+        if (Screen.isOSX()) {
+            in = FFMpeg.class.getResourceAsStream("/screenstudio/encoder/osx.properties");
+        } else {
+            in = FFMpeg.class.getResourceAsStream("/screenstudio/encoder/default.properties");
+        }
+
+        try {
+            Properties p = new Properties();
+            p.load(in);
+            bin = p.getProperty("BIN", "ffmpeg") + " ";
+            nonVerboseMode = p.getProperty("NONVERBOSEMODE", " -nostats -loglevel 0 ") + " ";
+            //Main input
+            desktopFormat = p.getProperty("DESKTOPFORMAT", "x11grab") + " ";
+            webcamFormat = p.getProperty("WEBCAMFORMAT", "v4l2");
+            // Audio
+            audioInput = p.getProperty("DEFAULTAUDIO", "default") + " ";
+            audioFormat = p.getProperty("AUDIOFORMAT", "pulse") + " ";
+            //Output
+            strictSetting = p.getProperty("STRICTSETTINGS", "-2") + " ";
+            //HOME
+            mHome = new File(p.getProperty("HOME", ".").replaceAll("~", System.getProperty("user.home")));
+            if (!mHome.exists()) {
+                mHome.mkdirs();
+            }
+            mThreading = p.getProperty("THREADING", mThreading);
+            in.close();
+
+        } catch (MalformedURLException ex) {
+            this.state = RunningState.Error;
+            this.lastErrorMessage = ex.getMessage();
+            Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            this.state = RunningState.Error;
+            this.lastErrorMessage = ex.getMessage();
+            Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+    }
+
+    @Override
+    public void run() {
+        mStopMe = false;
+        new Thread(compositor).start();
+//        mDebugMode = true;
+        state = RunningState.Running;
+        try {
+            File buffer = File.createTempFile("screenstudio", ".raw");
+            String file = buffer.getAbsolutePath();
+            buffer.delete();
+            Process mkfifo = Runtime.getRuntime().exec("mkfifo " + file);
+            mkfifo.waitFor();
+            mkfifo.destroy();
+            buffer = new File(file);
+            String command = getCommand().replaceAll("@INPUT", file);
+            System.out.println("Starting encoder...");
+            java.io.RandomAccessFile out = new java.io.RandomAccessFile(buffer, "rw");
+            Process p = Runtime.getRuntime().exec(command);
+            Monitor monitor = null;
+            if (mDebugMode) {
+                monitor = new Monitor(p.getErrorStream());
+            }
+            long frameTime = (1000000000 / compositor.getFPS());
+            long nextPTS = System.nanoTime() + frameTime;
+            while (!mStopMe) {
+                try {
+                    out.write(compositor.getData());
+                } catch (Exception exWrite) {
+                    System.err.println("Exception while writing...  " + exWrite.getMessage());
+                    this.lastErrorMessage = exWrite.getMessage();
+                    state = RunningState.Error;
+                    mStopMe = true;
+                }
+                while (nextPTS - System.nanoTime() > 0) {
+                    long wait = nextPTS - System.nanoTime();
+                    if (wait > 0) {
+                        try {
+                            Thread.sleep(wait / 1000000, (int) (wait % 1000000));
+                        } catch (Exception ex) {
+                            System.err.println("Error: Thread.sleep(" + (wait / 1000000) + "," + ((int) (wait % 1000000)) + ")");
+                        }
+                    }
+                }
+                nextPTS += frameTime;
+            }
+            System.out.println("Exiting encoder...");
+            System.out.println("Status : " + state.toString());
+            if (monitor != null) {
+                monitor.stop();
+            }
+            monitor = null;
+            out.close();
+            p.destroy();
+            buffer.delete();
+            if (state == RunningState.Running) {
+                state = RunningState.Stopped;
+            }
+
+        } catch (Exception ex) {
+            state = RunningState.Error;
+            lastErrorMessage = ex.getMessage();
+            System.err.println(ex.getMessage());
+            Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        compositor.stop();
+    }
+
+    public enum FORMATS {
+        TS,
+        FLV,
+        MOV,
+        MP4,
+        HITBOX,
+        TWITCH,
+        USTREAM,
+        VAUGHNLIVE,
+        YOUTUBE,
+        RTMP,
+        BROADCAST,
+    }
+
+    public static boolean isRTMP(FORMATS f) {
+        switch (f) {
+            case HITBOX:
+            case RTMP:
+            case TWITCH:
+            case USTREAM:
+            case VAUGHNLIVE:
+            case YOUTUBE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static String[] getServerList(FORMATS format) {
+        String[] list = new String[0];
+        switch (format) {
+            case HITBOX:
+            case TWITCH:
+            case VAUGHNLIVE:
+            case YOUTUBE:
+                Properties p = new Properties();
+                InputStream in;
+                try {
+                    java.util.ArrayList<String> l = new java.util.ArrayList<>();
+                    in = FFMpeg.class.getResourceAsStream("/screenstudio/targets/rtmp/" + format.name() + ".properties");
+                    p.load(in);
+                    in.close();
+                    p.values().stream().forEach((server) -> {
+                        l.add(server.toString());
+                    });
+                    list = l.toArray(list);
+                    java.util.Arrays.sort(list);
                 } catch (MalformedURLException ex) {
                     Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (IOException ex) {
                     Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
                 }
+                break;
 
+        }
+        return list;
+    }
+
+}
+
+class Monitor implements Runnable {
+
+    private InputStream mIn;
+    private boolean mStopMe = false;
+
+    protected Monitor(InputStream in) {
+        mIn = in;
+        new Thread(this).start();
+    }
+
+    protected void stop() {
+        mStopMe = true;
+    }
+
+    @Override
+    public void run() {
+        int count = 0;
+        byte[] buffer = new byte[65525];
+        while (!mStopMe) {
+            try {
+                count = mIn.read(buffer);
+            } catch (IOException ex) {
+                //log nothing...
             }
+            if (count > 0) {
+                System.out.println(new String(buffer, 0, count));
+            }
+        }
+        try {
+            mIn.close();
+        } catch (IOException ex) {
+            Logger.getLogger(Monitor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 }

@@ -1,3 +1,19 @@
+screenstudio (3.0.2) trusty; urgency=medium
+
+  * Fixes: See https://github.com/patrickballeux/screenstudio Changelog
+  * Adds: See https://github.com/patrickballeux/screenstudio Changelog
+  * Changes: See https://github.com/patrickballeux/screenstudio Changelog
+  * Removes: See https://github.com/patrickballeux/screenstudio Changelog
+  * New upstream version
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Tue, 23 Aug 2016 11:47:55 +0200
+
+screenstudio (2.3.0-0~46~ubuntu16.04.1) xenial; urgency=low
+
+  * Auto build.
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sun, 03 Jul 2016 15:35:54 +0000
+
 screenstudio (2.3.0) trusty; urgency=medium
 
   * Fixes: Fixed again display layout
