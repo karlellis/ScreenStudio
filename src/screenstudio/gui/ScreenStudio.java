@@ -22,7 +22,6 @@ import java.awt.Rectangle;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -54,20 +53,20 @@ import screenstudio.targets.Layout.SourceType;
  *
  * @author patrick
  */
-public class MainVersion3 extends javax.swing.JFrame {
+public class ScreenStudio extends javax.swing.JFrame {
 
     private final SourceLayoutPreview mLayoutPreview;
     private FFMpeg mFFMpeg = null;
-    private File mVideoOutputFolder = new File("");
+    private File mVideoOutputFolder = new File(System.getProperty("user.home"));
     private long mRecordingTimestamp = 0;
     private java.awt.TrayIcon trayIcon;
 
     /**
      * Creates new form MainVersion3
      */
-    public MainVersion3() {
+    public ScreenStudio() {
         initComponents();
-        this.setIconImage(new ImageIcon(MainVersion3.class.getResource("/screenstudio/gui/images/icon.png")).getImage());
+        this.setIconImage(new ImageIcon(ScreenStudio.class.getResource("/screenstudio/gui/images/icon.png")).getImage());
         initControls();
         mLayoutPreview = new SourceLayoutPreview(tableSources);
         mLayoutPreview.setOutputWidth((Integer) spinWidth.getValue());
@@ -125,17 +124,17 @@ public class MainVersion3 extends javax.swing.JFrame {
 
         if (SystemTray.isSupported()) {
             trayIcon = new TrayIcon(this.getIconImage(), "ScreenStudio: Double-click to activate recording...");
+            if (Screen.isOSX()) {
+                trayIcon.setToolTip("ScreenStudio: CTRL-Click to activate recording...");
+            }
             trayIcon.setImageAutoSize(true);
-            trayIcon.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    mnuCapture.doClick();
-                }
+            trayIcon.addActionListener((ActionEvent e) -> {
+                mnuCapture.doClick();
             });
             try {
                 SystemTray.getSystemTray().add(trayIcon);
             } catch (AWTException ex) {
-                Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
             }
 
         } else {
@@ -216,7 +215,7 @@ public class MainVersion3 extends javax.swing.JFrame {
                     case Desktop:
                         row[0] = false;
                         for (Screen screen : screens) {
-                            if (screen.getId().equals(s.ID)) {
+                            if (screen.getLabel().equals(s.ID)) {
                                 row[2] = screen;
                                 row[0] = true;
                                 break;
@@ -235,6 +234,8 @@ public class MainVersion3 extends javax.swing.JFrame {
                         LabelText t = new LabelText(s.ID);
                         t.setForegroundColor(s.foregroundColor);
                         t.setBackgroundColor(s.backgroundColor);
+                        t.setFontName(s.fontName);
+                        System.out.println("Font: " + s.fontName);
                         row[2] = t;
                         break;
                     case Stream:
@@ -258,7 +259,7 @@ public class MainVersion3 extends javax.swing.JFrame {
                 model.addRow(row);
             }
         } catch (IOException | ParserConfigurationException | SAXException | InterruptedException ex) {
-            Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
         }
 
         panPreviewLayout.repaint();
@@ -285,12 +286,12 @@ public class MainVersion3 extends javax.swing.JFrame {
 
         List<Source> sources = Compositor.getSources(tableSources, (Integer) spinFPS.getValue());
         for (Source s : sources) {
-            layout.addSource(s.getType(), s.getID(), s.getBounds().x, s.getBounds().y, s.getBounds().width, s.getBounds().height, s.getAlpha().getAlpha(), s.getZOrder(),s.getForeground(),s.getBackground());
+            layout.addSource(s.getType(), s.getID(), s.getBounds().x, s.getBounds().y, s.getBounds().width, s.getBounds().height, s.getAlpha().getAlpha(), s.getZOrder(), s.getForeground(), s.getBackground(),s.getFontName());
         }
         try {
             layout.save(file);
         } catch (Exception ex) {
-            Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -356,14 +357,14 @@ public class MainVersion3 extends javax.swing.JFrame {
                             }
                         }
                     } catch (IOException | InterruptedException ex) {
-                        Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+                        Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 });
 
                 mnuMainWebcams.add(menu);
             }
         } catch (IOException | InterruptedException ex) {
-            Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -373,14 +374,14 @@ public class MainVersion3 extends javax.swing.JFrame {
         try {
             for (Screen s : Screen.getSources()) {
                 JMenuItem menu = new JMenuItem(s.getDetailledLabel());
-                menu.setActionCommand(s.getId());
+                menu.setActionCommand(s.getLabel());
                 menu.setToolTipText("Size: " + s.getDetailledLabel());
                 menu.addActionListener((ActionEvent e) -> {
                     DefaultTableModel model = (DefaultTableModel) tableSources.getModel();
                     Object[] row = new Object[model.getColumnCount()];
                     try {
                         for (Screen screen : Screen.getSources()) {
-                            if (screen.getId().equals(e.getActionCommand())) {
+                            if (screen.getLabel().equals(e.getActionCommand())) {
                                 row[0] = true;
                                 row[1] = SourceType.Desktop;
                                 row[2] = screen;
@@ -397,14 +398,14 @@ public class MainVersion3 extends javax.swing.JFrame {
 
                         }
                     } catch (IOException | InterruptedException ex) {
-                        Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+                        Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 });
 
                 mnuMainDestops.add(menu);
             }
         } catch (IOException | InterruptedException ex) {
-            Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -454,6 +455,8 @@ public class MainVersion3 extends javax.swing.JFrame {
         panSettingsVideos = new javax.swing.JPanel();
         lblVideoFolder = new javax.swing.JLabel();
         btnSetVideoFolder = new javax.swing.JButton();
+        panSettingsMisc = new javax.swing.JPanel();
+        chkStayVisible = new javax.swing.JCheckBox();
         panStatus = new javax.swing.JPanel();
         lblMessages = new javax.swing.JLabel();
         menuBar = new javax.swing.JMenuBar();
@@ -582,7 +585,7 @@ public class MainVersion3 extends javax.swing.JFrame {
                 .addGroup(panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(lblRTMPKey)
                     .addComponent(txtRTMPKey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(90, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout panOutputLayout = new javax.swing.GroupLayout(panOutput);
@@ -641,11 +644,10 @@ public class MainVersion3 extends javax.swing.JFrame {
         jSplitPane1.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
 
         panPreviewLayout.setBackground(new java.awt.Color(51, 51, 51));
-        panPreviewLayout.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Layout", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Dialog", 1, 12), new java.awt.Color(255, 255, 255))); // NOI18N
+        panPreviewLayout.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Layout", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Lucida Grande", 0, 13), new java.awt.Color(255, 255, 255))); // NOI18N
         panPreviewLayout.setLayout(new java.awt.BorderLayout());
         jSplitPane1.setRightComponent(panPreviewLayout);
 
-        scrollSources.setBackground(new java.awt.Color(255, 255, 255));
         scrollSources.setBorder(javax.swing.BorderFactory.createTitledBorder("Video Sources"));
 
         tableSources.setModel(new javax.swing.table.DefaultTableModel(
@@ -763,7 +765,7 @@ public class MainVersion3 extends javax.swing.JFrame {
                     .addComponent(cboAudioSystems, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(panSettingsAudiosLayout.createSequentialGroup()
                         .addComponent(spinAudioDelay, javax.swing.GroupLayout.PREFERRED_SIZE, 97, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 0, Short.MAX_VALUE)))
+                        .addGap(0, 390, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         panSettingsAudiosLayout.setVerticalGroup(
@@ -813,6 +815,24 @@ public class MainVersion3 extends javax.swing.JFrame {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
+        panSettingsMisc.setBorder(javax.swing.BorderFactory.createTitledBorder("Misc"));
+
+        chkStayVisible.setText("Stay Visible");
+
+        javax.swing.GroupLayout panSettingsMiscLayout = new javax.swing.GroupLayout(panSettingsMisc);
+        panSettingsMisc.setLayout(panSettingsMiscLayout);
+        panSettingsMiscLayout.setHorizontalGroup(
+            panSettingsMiscLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(panSettingsMiscLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(chkStayVisible)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        panSettingsMiscLayout.setVerticalGroup(
+            panSettingsMiscLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(chkStayVisible)
+        );
+
         javax.swing.GroupLayout panOptionsLayout = new javax.swing.GroupLayout(panOptions);
         panOptions.setLayout(panOptionsLayout);
         panOptionsLayout.setHorizontalGroup(
@@ -821,7 +841,8 @@ public class MainVersion3 extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(panOptionsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(panSettingsAudios, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(panSettingsVideos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(panSettingsVideos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(panSettingsMisc, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
         panOptionsLayout.setVerticalGroup(
@@ -831,7 +852,9 @@ public class MainVersion3 extends javax.swing.JFrame {
                 .addComponent(panSettingsAudios, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(panSettingsVideos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(174, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(panSettingsMisc, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(99, Short.MAX_VALUE))
         );
 
         tabs.addTab("Options", panOptions);
@@ -998,19 +1021,25 @@ public class MainVersion3 extends javax.swing.JFrame {
             mFFMpeg.stop();
             try {
                 Microphone.getVirtualAudio(null, null);
-            } catch (IOException ex) {
-                Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IOException | InterruptedException ex) {
+                Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
             }
             mFFMpeg = null;
             mnuCapture.setText("Record");
-            if (trayIcon != null) {
-                trayIcon.setImage(this.getIconImage());
-                this.setVisible(true);
+            if (!chkStayVisible.isSelected()) {
+                if (trayIcon != null) {
+                    trayIcon.setImage(this.getIconImage());
+                    this.setVisible(true);
+                }
             }
             updateControls(true);
+            if (FFMpeg.isRTMP((FFMpeg.FORMATS) cboTarget.getSelectedItem())) {
+                txtRTMPKey.setVisible(true);
+            }
         } else {
+            if (txtRTMPKey.isVisible()) {
+                txtRTMPKey.setVisible(false);
+            }
             boolean abort = false;
             if (tableSources.getRowCount() == 0) {
                 lblMessages.setText("No video source to display...");
@@ -1036,41 +1065,43 @@ public class MainVersion3 extends javax.swing.JFrame {
                 try {
                     audio = Microphone.getVirtualAudio(mic, sys);
                 } catch (IOException ex) {
-                    Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (InterruptedException ex) {
-                    Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 mFFMpeg.setAudio((FFMpeg.AudioRate) cboAudioBitrate.getSelectedItem(), audio, (Float) spinAudioDelay.getValue());
-                mFFMpeg.setPreset((FFMpeg.Presets) cboVideoPresets.getSelectedItem());
                 String server = "";
-                if (cboRTMPServers.getSelectedItem()!= null){
+                if (cboRTMPServers.getSelectedItem() != null) {
                     server = cboRTMPServers.getSelectedItem().toString();
                     server = server.split(";")[1];
                 }
-                mFFMpeg.setOutputFormat((FFMpeg.FORMATS) cboTarget.getSelectedItem(), (FFMpeg.Presets) cboVideoPresets.getSelectedItem(), (Integer) numVideoBitrate.getValue(),server , txtRTMPKey.getText(), mVideoOutputFolder);
+                mFFMpeg.setOutputFormat((FFMpeg.FORMATS) cboTarget.getSelectedItem(), (FFMpeg.Presets) cboVideoPresets.getSelectedItem(), (Integer) numVideoBitrate.getValue(), server, txtRTMPKey.getText(), mVideoOutputFolder);
                 new Thread(mFFMpeg).start();
                 lblMessages.setText("Recording...");
                 mnuCapture.setText("Stop");
                 if (trayIcon != null) {
-                    trayIcon.setImage(new ImageIcon(MainVersion3.class.getResource("/screenstudio/gui/images/iconRunning.png")).getImage());
+                    trayIcon.setImage(new ImageIcon(ScreenStudio.class.getResource("/screenstudio/gui/images/iconRunning.png")).getImage());
                 }
 
                 updateControls(false);
-                if (trayIcon != null) {
-                    this.setVisible(false);
-                } else {
-                    this.setExtendedState(JFrame.ICONIFIED);
+                if (!chkStayVisible.isSelected()) {
+                    if (trayIcon != null) {
+                        this.setVisible(false);
+                    } else {
+                        this.setExtendedState(JFrame.ICONIFIED);
+                    }
                 }
                 mRecordingTimestamp = System.currentTimeMillis();
                 new Thread(() -> {
-                    while (mFFMpeg != null) {
+                    FFMpeg f = mFFMpeg;
+                    while (f != null) {
                         long seconds = (System.currentTimeMillis() - mRecordingTimestamp) / 1000;
                         if (seconds < 60) {
                             setTitle("Recording! (" + seconds + " sec)");
                         } else {
                             setTitle("Recording! (" + (seconds / 60) + " min " + (seconds % 60) + " sec)");
                         }
-                        if (mFFMpeg.getState() == FFMpeg.RunningState.Error) {
+                        if (f.getState() == FFMpeg.RunningState.Error) {
                             System.err.println("Encoder error detected...");
                             mnuCapture.doClick();
                             break;
@@ -1078,8 +1109,9 @@ public class MainVersion3 extends javax.swing.JFrame {
                         try {
                             Thread.sleep(1000);
                         } catch (InterruptedException ex) {
-                            Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+                            Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
                         }
+                        f = mFFMpeg;
                     }
                     setTitle("ScreenStudio " + screenstudio.Version.MAIN);
                 }).start();
@@ -1112,7 +1144,7 @@ public class MainVersion3 extends javax.swing.JFrame {
                 try {
                     p.flush();
                 } catch (BackingStoreException ex) {
-                    Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }
@@ -1144,7 +1176,7 @@ public class MainVersion3 extends javax.swing.JFrame {
                 try {
                     p.flush();
                 } catch (BackingStoreException ex) {
-                    Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }
@@ -1265,12 +1297,12 @@ public class MainVersion3 extends javax.swing.JFrame {
         try {
             p.flush();
         } catch (BackingStoreException ex) {
-            Logger.getLogger(MainVersion3.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
         }
     }//GEN-LAST:event_spinAudioDelayStateChanged
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-        if (trayIcon != null){
+        if (trayIcon != null) {
             SystemTray.getSystemTray().remove(trayIcon);
         }
     }//GEN-LAST:event_formWindowClosing
@@ -1292,20 +1324,21 @@ public class MainVersion3 extends javax.swing.JFrame {
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(MainVersion3.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(ScreenStudio.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(MainVersion3.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(ScreenStudio.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(MainVersion3.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(ScreenStudio.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(MainVersion3.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(ScreenStudio.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        //</editor-fold>
         //</editor-fold>
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new MainVersion3().setVisible(true);
+                new ScreenStudio().setVisible(true);
             }
         });
     }
@@ -1318,6 +1351,7 @@ public class MainVersion3 extends javax.swing.JFrame {
     private javax.swing.JComboBox<String> cboRTMPServers;
     private javax.swing.JComboBox<FFMpeg.FORMATS> cboTarget;
     private javax.swing.JComboBox<FFMpeg.Presets> cboVideoPresets;
+    private javax.swing.JCheckBox chkStayVisible;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel2;
@@ -1354,6 +1388,7 @@ public class MainVersion3 extends javax.swing.JFrame {
     private javax.swing.JPanel panOutput;
     private javax.swing.JPanel panPreviewLayout;
     private javax.swing.JPanel panSettingsAudios;
+    private javax.swing.JPanel panSettingsMisc;
     private javax.swing.JPanel panSettingsVideos;
     private javax.swing.JPanel panSources;
     private javax.swing.JPanel panStatus;

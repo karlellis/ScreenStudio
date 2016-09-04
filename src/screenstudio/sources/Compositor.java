@@ -22,6 +22,8 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JTable;
 import screenstudio.gui.LabelText;
 import screenstudio.targets.Layout;
@@ -38,6 +40,7 @@ public class Compositor implements Runnable {
     private final int mFPS;
     private final Rectangle mOutputSize;
     private byte[] mData;
+    private boolean mIsReady = false;
 
     public Compositor(java.util.List<Source> sources, Rectangle outputSize, int fps) {
         sources.sort((a, b) -> Integer.compare(b.getZOrder(), a.getZOrder()));
@@ -45,6 +48,10 @@ public class Compositor implements Runnable {
         mOutputSize = outputSize;
         mFPS = fps;
         mData = new byte[mOutputSize.width * mOutputSize.height * 3];
+    }
+
+    public boolean isReady() {
+        return mIsReady;
     }
 
     public byte[] getData() {
@@ -56,6 +63,13 @@ public class Compositor implements Runnable {
         mStopMe = false;
         for (Source s : mSources) {
             new Thread(s).start();
+            while (s.getImage() == null) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(Compositor.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
         }
         long frameTime = (1000000000 / mFPS);
         long nextPTS = System.nanoTime() + frameTime;
@@ -72,17 +86,16 @@ public class Compositor implements Runnable {
             byte[] mBuffer = new byte[data.length];
             System.arraycopy(data, 0, mBuffer, 0, mBuffer.length);
             mData = mBuffer;
-            while (nextPTS - System.nanoTime() > 0) {
-                long wait = nextPTS - System.nanoTime();
-                if (wait > 0) {
-                    try {
-                        Thread.sleep(wait / 1000000, (int) (wait % 1000000));
-                    } catch (Exception ex) {
-                        System.err.println("Error: Thread.sleep(" + (wait / 1000000) + "," + ((int) (wait % 1000000)) + ")");
-                    }
+            mIsReady = true;
+            long wait = nextPTS - System.nanoTime();
+            nextPTS += frameTime;
+            if (wait > 0) {
+                try {
+                    Thread.sleep(wait / 1000000, (int) (wait % 1000000));
+                } catch (Exception ex) {
+                    System.err.println("Error: Thread.sleep(" + (wait / 1000000) + "," + ((int) (wait % 1000000)) + ")");
                 }
             }
-            nextPTS += frameTime;
         }
         for (Source s : mSources) {
             s.stop();
@@ -150,7 +163,7 @@ public class Compositor implements Runnable {
                     if (sources.getValueAt(i, 1) == SourceType.LabelText) {
                         list.add(new SourceLabel(new Rectangle(sx, sy, sw, sh), i, alpha, ((LabelText) source)));
                     } else if (sources.getValueAt(i, 1) == SourceType.LabelFile) {
-                        list.add(new SourceFileLabel(new Rectangle(sx, sy, sw, sh), i, alpha,1000, (LabelText) source));
+                        list.add(new SourceFileLabel(new Rectangle(sx, sy, sw, sh), i, alpha, 1000, (LabelText) source));
                     }
                 }
             }
