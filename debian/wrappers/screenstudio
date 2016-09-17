@@ -17,4 +17,4 @@ JAVA_ARGS="-splash:splash.gif"
 # Run the application
 cd ${INSTALLDIR}
 
-run_java screenstudio.gui.Main "$@"
+run_java screenstudio.gui.ScreenStudio "$@"

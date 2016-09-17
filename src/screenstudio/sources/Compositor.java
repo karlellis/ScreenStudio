@@ -50,10 +50,9 @@ public class Compositor implements Runnable {
         mData = new byte[mOutputSize.width * mOutputSize.height * 3];
     }
 
-    public boolean isReady() {
+    public boolean isReady(){
         return mIsReady;
     }
-
     public byte[] getData() {
         return mData;
     }
@@ -86,16 +85,18 @@ public class Compositor implements Runnable {
             byte[] mBuffer = new byte[data.length];
             System.arraycopy(data, 0, mBuffer, 0, mBuffer.length);
             mData = mBuffer;
-            mIsReady = true;
-            long wait = nextPTS - System.nanoTime();
-            nextPTS += frameTime;
-            if (wait > 0) {
-                try {
-                    Thread.sleep(wait / 1000000, (int) (wait % 1000000));
-                } catch (Exception ex) {
-                    System.err.println("Error: Thread.sleep(" + (wait / 1000000) + "," + ((int) (wait % 1000000)) + ")");
+            mIsReady=true;
+            while (nextPTS - System.nanoTime() > 0) {
+                long wait = nextPTS - System.nanoTime();
+                if (wait > 0) {
+                    try {
+                        Thread.sleep(wait / 1000000, (int) (wait % 1000000));
+                    } catch (Exception ex) {
+                        System.err.println("Error: Thread.sleep(" + (wait / 1000000) + "," + ((int) (wait % 1000000)) + ")");
+                    }
                 }
             }
+            nextPTS += frameTime;
         }
         for (Source s : mSources) {
             s.stop();

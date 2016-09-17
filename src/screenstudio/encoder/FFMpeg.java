@@ -61,6 +61,7 @@ public class FFMpeg implements Runnable {
     }
 
     public enum RunningState {
+        Starting,
         Running,
         Stopped,
         Error
@@ -278,7 +279,16 @@ public class FFMpeg implements Runnable {
         }
         // Output
         c.append(" -r ").append(compositor.getFPS());
-        c.append(" -s ").append(compositor.getWidth()).append("x").append(compositor.getHeight());
+        if (videoEncoder.equals("gif")) {
+            if (compositor.getWidth() < 800){
+                c.append(" -vf flags=lanczos ");
+            } else {
+                c.append(" -vf scale=800:-1:flags=lanczos ");
+            }
+        } 
+//        else {
+//            c.append(" -s ").append(compositor.getWidth()).append("x").append(compositor.getHeight());
+//        }
         c.append(" -vb ").append(videoBitrate).append("k");
         c.append(" -pix_fmt yuv420p ");
         if (output.startsWith("rtmp://")) {
@@ -357,9 +367,9 @@ public class FFMpeg implements Runnable {
     @Override
     public void run() {
         mStopMe = false;
+        state = RunningState.Starting;
         new Thread(compositor).start();
         mDebugMode = true;
-        state = RunningState.Running;
         try {
             String command = getCommand();
             System.out.println("Starting encoder...");
@@ -375,6 +385,7 @@ public class FFMpeg implements Runnable {
             OutputStream out = p.getOutputStream();
             long frameTime = (1000000000 / compositor.getFPS());
             long nextPTS = System.nanoTime() + frameTime;
+            state = RunningState.Running;
             while (!mStopMe) {
                 try {
                     out.write(compositor.getData());
