@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 patrick
+ * Copyright (C) 2016 Patrick Balleux (Twitter: @patrickballeux)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -116,18 +116,18 @@ public abstract class Source implements Runnable {
                 }
             }
         } catch (IOException ex) {
-            Logger.getLogger(Source.class.getName()).log(Level.SEVERE, null, ex);
+            System.out.println("Source has stopped... (" + ex.getMessage() + ")" );
             mStopMe = true;
-        }
-        try {
-            disposeStream();
-        } catch (IOException ex) {
-            Logger.getLogger(Source.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
     public void stop() {
         mStopMe = true;
+        try {
+            disposeStream();
+        } catch (IOException ex) {
+            Logger.getLogger(Source.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     public BufferedImage getImage() {

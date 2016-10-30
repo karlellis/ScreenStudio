@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Patrick Balleux
+ * Copyright (C) 2016 Patrick Balleux (Twitter: @patrickballeux) Balleux
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,12 +51,14 @@ public class Screen {
         return size.height;
     }
 
-    public boolean isFollowingMouse(){
+    public boolean isFollowingMouse() {
         return mFollowMouse;
     }
-    public void setFollowingMouse(boolean value){
+
+    public void setFollowingMouse(boolean value) {
         mFollowMouse = value;
     }
+
     public String getDetailledLabel() {
         return getLabel() + " (" + (int) this.size.getWidth() + "X" + (int) this.size.getHeight() + ")";
     }
@@ -66,6 +68,7 @@ public class Screen {
         System.out.println("Screen List:");
         if (Screen.isOSX()) {
             list.addAll(getOSXDevices());
+
         } else {
             GraphicsEnvironment g = GraphicsEnvironment.getLocalGraphicsEnvironment();
             GraphicsDevice[] devices = g.getScreenDevices();
@@ -73,8 +76,12 @@ public class Screen {
             double maxWidth = 0;
             double maxHeight = 9999;
             String currentDisplay = System.getenv("DISPLAY");
-            if (currentDisplay.length() == 2) {
-                currentDisplay = currentDisplay + ".0";
+            if (currentDisplay != null) {
+                if (currentDisplay.length() == 2) {
+                    currentDisplay = currentDisplay + ".0";
+                }
+            } else {
+                currentDisplay = "desktop";
             }
             for (GraphicsDevice d : devices) {
                 Screen s = new Screen();
@@ -159,7 +166,7 @@ public class Screen {
      * @return the id
      */
     public String getId() {
-        if (mIsOSX) {
+        if (mIsOSX || Screen.isWindows()) {
             return id;
         } else {
             return id + "+" + size.x + "," + size.y;
@@ -199,6 +206,11 @@ public class Screen {
     public static boolean isOSX() {
         String osName = System.getProperty("os.name").toLowerCase();
         return osName.startsWith("mac os x");
+    }
+
+    public static boolean isWindows() {
+        String osName = System.getProperty("os.name").toLowerCase();
+        return osName.startsWith("windows");
     }
 
     private static ArrayList<Screen> getOSXDevices() throws IOException, InterruptedException {

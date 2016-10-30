@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 patrick
+ * Copyright (C) 2016 Patrick Balleux (Twitter: @patrickballeux)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -98,6 +98,7 @@ public class Compositor implements Runnable {
             }
             nextPTS += frameTime;
         }
+        System.out.println("Compositor is stopping");
         for (Source s : mSources) {
             s.stop();
         }
@@ -117,6 +118,7 @@ public class Compositor implements Runnable {
 
     public void stop() {
         mStopMe = true;
+        System.out.println("Requesting Compositor to stop...");
     }
 
     public static List<Source> getSources(JTable sources, int fps) {

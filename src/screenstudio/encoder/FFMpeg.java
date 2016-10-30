@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Patrick Balleux
+ * Copyright (C) 2014 Patrick Balleux (Twitter: @patrickballeux
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -114,6 +114,7 @@ public class FFMpeg implements Runnable {
     }
 
     public void stop() {
+        System.out.println("Stopping requested...");
         mStopMe = true;
     }
 
@@ -200,10 +201,10 @@ public class FFMpeg implements Runnable {
             case GIF:
                 muxer = "gif";
                 videoEncoder = "gif";
-                audioEncoder = "libmp3lame";
+                audioEncoder = "";
                 preset = "";
                 String randomName = generateRandomName();
-                output = new File(outputFolder, randomName + ".gif").getAbsolutePath() + " -f mp3 " + new File(outputFolder, randomName + ".mp3").getAbsolutePath();
+                output = new File(outputFolder, randomName + ".gif").getAbsolutePath();
                 break;
             case RTMP:
             case HITBOX:
@@ -273,7 +274,9 @@ public class FFMpeg implements Runnable {
         c.append(" -i - ");
 
         // Capture Audio
-        c.append(" -f ").append(audioFormat).append(mITSOffset).append(" -i ").append(audioInput);
+        if (!videoEncoder.equals("gif")) {
+            c.append(" -f ").append(audioFormat).append(mITSOffset).append(" -i ").append(audioInput);
+        }
         // Enabled strict settings
         if (strictSetting.length() > 0) {
             c.append(" -strict ").append(strictSetting);
@@ -281,23 +284,23 @@ public class FFMpeg implements Runnable {
         // Output
         c.append(" -r ").append(compositor.getFPS());
         if (videoEncoder.equals("gif")) {
-            if (compositor.getWidth() < 800){
+            if (compositor.getWidth() <= 600) {
                 c.append(" -vf flags=lanczos ");
             } else {
-                c.append(" -vf scale=800:-1:flags=lanczos ");
+                c.append(" -vf scale=600:-1:flags=lanczos ");
             }
-        } 
-//        else {
-//            c.append(" -s ").append(compositor.getWidth()).append("x").append(compositor.getHeight());
-//        }
+        }
         c.append(" -vb ").append(videoBitrate).append("k");
         c.append(" -pix_fmt yuv420p ");
         if (output.startsWith("rtmp://")) {
             c.append(" -minrate ").append(videoBitrate).append("k -maxrate ").append(videoBitrate).append("k ");
         }
-        c.append(" -ab ").append(audioBitrate).append("k").append(" -ar ").append(audioRate);
+        if (!videoEncoder.equals("gif")) {
+            c.append(" -ab ").append(audioBitrate).append("k").append(" -ar ").append(audioRate);
+            c.append(" -acodec ").append(audioEncoder);
+        }
         c.append(" -vcodec ").append(videoEncoder);
-        c.append(" -acodec ").append(audioEncoder);
+
         if (preset.length() > 0) {
             c.append(" -preset ").append(preset);
         }
@@ -328,6 +331,8 @@ public class FFMpeg implements Runnable {
         InputStream in = null;
         if (Screen.isOSX()) {
             in = FFMpeg.class.getResourceAsStream("/screenstudio/encoder/osx.properties");
+        } else if (Screen.isWindows()) {
+            in = FFMpeg.class.getResourceAsStream("/screenstudio/encoder/windows.properties");
         } else {
             in = FFMpeg.class.getResourceAsStream("/screenstudio/encoder/default.properties");
         }
@@ -346,10 +351,7 @@ public class FFMpeg implements Runnable {
             //Output
             strictSetting = p.getProperty("STRICTSETTINGS", "-2") + " ";
             //HOME
-            mHome = new File(p.getProperty("HOME", ".").replaceAll("~", System.getProperty("user.home")));
-            if (!mHome.exists()) {
-                mHome.mkdirs();
-            }
+            mHome = new File(System.getProperty("user.home"));
             mThreading = p.getProperty("THREADING", mThreading);
             in.close();
 
@@ -381,15 +383,18 @@ public class FFMpeg implements Runnable {
                     Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-
             Process p = Runtime.getRuntime().exec(command);
             OutputStream out = p.getOutputStream();
+            InputStream in = p.getErrorStream();
+            new Thread(new ProcessReader(in)).start();
             long frameTime = (1000000000 / compositor.getFPS());
             long nextPTS = System.nanoTime() + frameTime;
             state = RunningState.Running;
+            System.out.println("Starting encoding...");
             while (!mStopMe) {
                 try {
                     out.write(compositor.getData());
+//                    System.out.println("Data written " + System.currentTimeMillis());
                 } catch (Exception exWrite) {
                     System.err.println("Exception while writing...  " + exWrite.getMessage());
                     this.lastErrorMessage = exWrite.getMessage();
@@ -408,19 +413,21 @@ public class FFMpeg implements Runnable {
             }
             System.out.println("Exiting encoder...");
             System.out.println("Status : " + state.toString());
+            in.close();
             out.close();
+            compositor.stop();
             p.destroy();
+            p = null;
             if (state == RunningState.Running) {
                 state = RunningState.Stopped;
             }
 
         } catch (IOException ex) {
+            compositor.stop();
             state = RunningState.Error;
             lastErrorMessage = ex.getMessage();
             Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
         }
-        compositor.stop();
-
     }
 
     public enum FORMATS {

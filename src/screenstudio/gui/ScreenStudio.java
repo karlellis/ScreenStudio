@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 patrick
+ * Copyright (C) 2016 Patrick Balleux (Twitter: @patrickballeux)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,12 +16,18 @@
  */
 package screenstudio.gui;
 
+import com.tulskiy.keymaster.common.HotKey;
+import com.tulskiy.keymaster.common.HotKeyListener;
+import com.tulskiy.keymaster.common.Provider;
 import java.awt.AWTException;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -33,6 +39,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
+import javax.swing.KeyStroke;
 import javax.swing.ToolTipManager;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.table.DefaultTableModel;
@@ -45,6 +52,7 @@ import screenstudio.sources.Compositor;
 import screenstudio.sources.Microphone;
 import screenstudio.sources.Screen;
 import screenstudio.sources.Source;
+import screenstudio.sources.SystemCheck;
 import screenstudio.sources.Webcam;
 import screenstudio.targets.Layout;
 import screenstudio.targets.Layout.SourceType;
@@ -60,6 +68,7 @@ public class ScreenStudio extends javax.swing.JFrame {
     private File mVideoOutputFolder = new File(System.getProperty("user.home"));
     private long mRecordingTimestamp = 0;
     private java.awt.TrayIcon trayIcon;
+    private final com.tulskiy.keymaster.common.Provider mShortcuts;
 
     /**
      * Creates new form MainVersion3
@@ -73,14 +82,36 @@ public class ScreenStudio extends javax.swing.JFrame {
         mLayoutPreview.setOutputHeight((Integer) spinHeight.getValue());
         panPreviewLayout.add(mLayoutPreview, BorderLayout.CENTER);
         this.setTitle("ScreenStudio " + screenstudio.Version.MAIN);
-        this.setSize(700, 400);
+        this.setSize(700, 450);
         ToolTipManager.sharedInstance().setDismissDelay(8000);
         ToolTipManager.sharedInstance().setInitialDelay(2000);
         new Thread(() -> {
             if (Version.hasNewVersion()) {
                 lblMessages.setText("A new version is available...");
             }
+            String text = "";
+            for (String msg : SystemCheck.getSystemCheck(false)) {
+                text = text + msg + "\n ";
+            }
+            if (text.length() > 0) {
+                lblMessages.setText(text);
+                lblMessages.setForeground(Color.red);
+                lblMessages.setToolTipText("<HTML><BODY>" + text.replaceAll("\n", "<BR>") + "</BODY></HTML>");
+            }
         }).start();
+        mShortcuts = Provider.getCurrentProvider(false);
+        mShortcuts.register(KeyStroke.getKeyStroke("control shift R"), new HotKeyListener() {
+            @Override
+            public void onHotKey(HotKey hotkey) {
+                System.out.println("Hotkey: " + hotkey.toString());
+                switch (hotkey.keyStroke.getKeyCode()) {
+                    case KeyEvent.VK_R:
+                        mnuCapture.doClick();
+                        break;
+                }
+            }
+        });
+
     }
 
     private void initControls() {
@@ -121,8 +152,9 @@ public class ScreenStudio extends javax.swing.JFrame {
         // get audio sync
         java.util.prefs.Preferences p = java.util.prefs.Preferences.userRoot().node("screenstudio");
         spinAudioDelay.setValue(p.getFloat("audiodelay", 0));
-        cboDefaultRecordingAction.setSelectedIndex(p.getInt("DefaultRecAction",0));
-        if (SystemTray.isSupported()) {
+        cboDefaultRecordingAction.setSelectedIndex(p.getInt("DefaultRecAction", 0));
+        chkDoNotUseTrayIcon.setSelected(p.getBoolean("DoNotUseTrayIcon", chkDoNotUseTrayIcon.isSelected()));
+        if (SystemTray.isSupported() && !chkDoNotUseTrayIcon.isSelected()) {
             trayIcon = new TrayIcon(this.getIconImage(), "ScreenStudio: Double-click to activate recording...");
             if (Screen.isOSX()) {
                 trayIcon.setToolTip("ScreenStudio: CTRL-Click to activate recording...");
@@ -141,6 +173,9 @@ public class ScreenStudio extends javax.swing.JFrame {
             trayIcon = null;
         }
 
+        if (Screen.isOSX() || Screen.isWindows()) {
+            cboAudioSystems.setEnabled(false);
+        }
     }
 
     private void updateControls(boolean enabled) {
@@ -165,6 +200,9 @@ public class ScreenStudio extends javax.swing.JFrame {
         mnuFileSave.setEnabled(enabled);
         spinAudioDelay.setEnabled(enabled);
         cboDefaultRecordingAction.setEnabled(enabled);
+         if (Screen.isOSX() || Screen.isWindows()) {
+            cboAudioSystems.setEnabled(false);
+        }
     }
 
     private void loadLayout(File file) {
@@ -220,10 +258,12 @@ public class ScreenStudio extends javax.swing.JFrame {
                             if (screen.getLabel().equals(s.ID)) {
                                 row[2] = screen;
                                 row[0] = true;
-                                screen.getSize().width = s.Width;
-                                screen.getSize().height = s.Height;
-                                screen.getSize().x = s.CaptureX;
-                                screen.getSize().y = s.CaptureY;
+                                if (s.CaptureX != 0 || s.CaptureY != 0) {
+                                    screen.getSize().width = s.Width;
+                                    screen.getSize().height = s.Height;
+                                    screen.getSize().x = s.CaptureX;
+                                    screen.getSize().y = s.CaptureY;
+                                }
                                 break;
                             }
                         }
@@ -309,6 +349,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                 case MP4:
                 case FLV:
                 case TS:
+                case GIF:
                     cboRTMPServers.setModel(new DefaultComboBoxModel());
                     txtRTMPKey.setText((""));
                     cboRTMPServers.setVisible(false);
@@ -394,8 +435,8 @@ public class ScreenStudio extends javax.swing.JFrame {
                                 row[2] = screen;
                                 row[3] = 0;
                                 row[4] = 0;
-                                row[5] = screen.getWidth();
-                                row[6] = screen.getHeight();
+                                row[5] = spinWidth.getValue();
+                                row[6] = spinHeight.getValue();
                                 row[7] = 1;
                                 model.addRow(row);
                                 mLayoutPreview.repaint();
@@ -446,6 +487,7 @@ public class ScreenStudio extends javax.swing.JFrame {
         cboAudioBitrate = new javax.swing.JComboBox<>();
         cboRTMPServers = new javax.swing.JComboBox<>();
         txtRTMPKey = new javax.swing.JTextField();
+        chkKeepScreenRatio = new javax.swing.JCheckBox();
         panSources = new javax.swing.JPanel();
         jSplitPane1 = new javax.swing.JSplitPane();
         panPreviewLayout = new javax.swing.JPanel();
@@ -465,6 +507,9 @@ public class ScreenStudio extends javax.swing.JFrame {
         panSettingsMisc = new javax.swing.JPanel();
         jLabel11 = new javax.swing.JLabel();
         cboDefaultRecordingAction = new javax.swing.JComboBox<>();
+        jLabel12 = new javax.swing.JLabel();
+        chkDoNotUseTrayIcon = new javax.swing.JCheckBox();
+        jLabel13 = new javax.swing.JLabel();
         panStatus = new javax.swing.JPanel();
         lblMessages = new javax.swing.JLabel();
         menuBar = new javax.swing.JMenuBar();
@@ -568,7 +613,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                         .addComponent(lblRTMPKey, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(txtRTMPKey, javax.swing.GroupLayout.PREFERRED_SIZE, 435, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(53, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         panTargetSettingsLayout.setVerticalGroup(
             panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -596,6 +641,8 @@ public class ScreenStudio extends javax.swing.JFrame {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
+        chkKeepScreenRatio.setText("Keep Screen Ratio");
+
         javax.swing.GroupLayout panOutputLayout = new javax.swing.GroupLayout(panOutput);
         panOutput.setLayout(panOutputLayout);
         panOutputLayout.setHorizontalGroup(
@@ -619,6 +666,8 @@ public class ScreenStudio extends javax.swing.JFrame {
                                 .addComponent(spinHeight, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addComponent(spinFPS, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(cboTarget, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(chkKeepScreenRatio)
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
@@ -630,7 +679,8 @@ public class ScreenStudio extends javax.swing.JFrame {
                     .addComponent(jLabel1)
                     .addComponent(spinWidth, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(spinHeight, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel2))
+                    .addComponent(jLabel2)
+                    .addComponent(chkKeepScreenRatio))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(panOutputLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel3)
@@ -652,7 +702,7 @@ public class ScreenStudio extends javax.swing.JFrame {
         jSplitPane1.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
 
         panPreviewLayout.setBackground(new java.awt.Color(51, 51, 51));
-        panPreviewLayout.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Layout", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Dialog", 0, 12), new java.awt.Color(255, 255, 255))); // NOI18N
+        panPreviewLayout.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Layout", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
         panPreviewLayout.setLayout(new java.awt.BorderLayout());
         jSplitPane1.setRightComponent(panPreviewLayout);
 
@@ -770,11 +820,11 @@ public class ScreenStudio extends javax.swing.JFrame {
                     .addComponent(jLabel10))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(panSettingsAudiosLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(cboAudioMicrophones, 0, 461, Short.MAX_VALUE)
+                    .addComponent(cboAudioMicrophones, 0, 463, Short.MAX_VALUE)
                     .addComponent(cboAudioSystems, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(panSettingsAudiosLayout.createSequentialGroup()
                         .addComponent(spinAudioDelay, javax.swing.GroupLayout.PREFERRED_SIZE, 97, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 371, Short.MAX_VALUE)))
+                        .addGap(0, 366, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         panSettingsAudiosLayout.setVerticalGroup(
@@ -835,15 +885,35 @@ public class ScreenStudio extends javax.swing.JFrame {
             }
         });
 
+        jLabel12.setFont(new java.awt.Font("Tahoma", 2, 11)); // NOI18N
+        jLabel12.setForeground(new java.awt.Color(102, 102, 102));
+        jLabel12.setText("Contrl Shift R can be used as a global shortcut");
+
+        chkDoNotUseTrayIcon.setText("Do not use Tray Icon");
+        chkDoNotUseTrayIcon.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                chkDoNotUseTrayIconActionPerformed(evt);
+            }
+        });
+
+        jLabel13.setText("When starting,");
+
         javax.swing.GroupLayout panSettingsMiscLayout = new javax.swing.GroupLayout(panSettingsMisc);
         panSettingsMisc.setLayout(panSettingsMiscLayout);
         panSettingsMiscLayout.setHorizontalGroup(
             panSettingsMiscLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panSettingsMiscLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jLabel11)
+                .addGroup(panSettingsMiscLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel11)
+                    .addComponent(jLabel13))
                 .addGap(18, 18, 18)
-                .addComponent(cboDefaultRecordingAction, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(panSettingsMiscLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(chkDoNotUseTrayIcon)
+                    .addGroup(panSettingsMiscLayout.createSequentialGroup()
+                        .addComponent(cboDefaultRecordingAction, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jLabel12)))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         panSettingsMiscLayout.setVerticalGroup(
@@ -851,8 +921,13 @@ public class ScreenStudio extends javax.swing.JFrame {
             .addGroup(panSettingsMiscLayout.createSequentialGroup()
                 .addGroup(panSettingsMiscLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel11)
-                    .addComponent(cboDefaultRecordingAction, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(cboDefaultRecordingAction, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel12))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(panSettingsMiscLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel13)
+                    .addComponent(chkDoNotUseTrayIcon))
+                .addContainerGap(16, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout panOptionsLayout = new javax.swing.GroupLayout(panOptions);
@@ -876,7 +951,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                 .addComponent(panSettingsVideos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(panSettingsMisc, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(69, Short.MAX_VALUE))
+                .addContainerGap(94, Short.MAX_VALUE))
         );
 
         tabs.addTab("Options", panOptions);
@@ -1030,15 +1105,40 @@ public class ScreenStudio extends javax.swing.JFrame {
         mLayoutPreview.repaint();
     }//GEN-LAST:event_tableSourcesMouseClicked
 
+    boolean mAutoAction = false;
     private void spinWidthStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_spinWidthStateChanged
         if (mLayoutPreview != null) {
             mLayoutPreview.setOutputWidth((Integer) spinWidth.getValue());
+            if (!mAutoAction && chkKeepScreenRatio.isSelected()) {
+                mAutoAction = true;
+                Rectangle r = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+                int h = r.height;
+                int w = r.width;
+                int value = ((Integer) spinWidth.getValue()) * h / w;
+                if (value % 2 != 0) {
+                    value++;
+                }
+                spinHeight.setValue(value);
+                mAutoAction = false;
+            }
         }
     }//GEN-LAST:event_spinWidthStateChanged
 
     private void spinHeightStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_spinHeightStateChanged
         if (mLayoutPreview != null) {
             mLayoutPreview.setOutputHeight((Integer) spinHeight.getValue());
+            if (!mAutoAction && chkKeepScreenRatio.isSelected()) {
+                mAutoAction = true;
+                Rectangle r = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+                int h = r.height;
+                int w = r.width;
+                int value = ((Integer) spinHeight.getValue()) * w / h;
+                if (value % 2 != 0) {
+                    value++;
+                }
+                spinWidth.setValue(value);
+                mAutoAction = false;
+            }
         }
     }//GEN-LAST:event_spinHeightStateChanged
 
@@ -1085,7 +1185,9 @@ public class ScreenStudio extends javax.swing.JFrame {
                 txtRTMPKey.setVisible(true);
             }
         } else {
-            trayIcon.setImage(new ImageIcon(ScreenStudio.class.getResource("/screenstudio/gui/images/iconStarting.png")).getImage());
+            if (trayIcon != null) {
+                trayIcon.setImage(new ImageIcon(ScreenStudio.class.getResource("/screenstudio/gui/images/iconStarting.png")).getImage());
+            }
             if (txtRTMPKey.isVisible()) {
                 txtRTMPKey.setVisible(false);
             }
@@ -1094,7 +1196,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                 lblMessages.setText("No video source to display...");
                 abort = true;
             }
-            if (cboAudioMicrophones.getSelectedIndex() == 0 && cboAudioSystems.getSelectedIndex() == 0) {
+            if (cboTarget.getSelectedItem() != FFMpeg.FORMATS.GIF && cboAudioMicrophones.getSelectedIndex() == 0 && cboAudioSystems.getSelectedIndex() == 0) {
                 lblMessages.setText("No audio source selected...");
                 abort = true;
             }
@@ -1111,14 +1213,16 @@ public class ScreenStudio extends javax.swing.JFrame {
                 if (cboAudioSystems.getSelectedIndex() > 0) {
                     sys = (Microphone) cboAudioSystems.getSelectedItem();
                 }
-                try {
-                    audio = Microphone.getVirtualAudio(mic, sys);
-                } catch (IOException ex) {
-                    Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (InterruptedException ex) {
-                    Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+                if (mic != null || sys != null) {
+                    try {
+                        audio = Microphone.getVirtualAudio(mic, sys);
+                    } catch (IOException ex) {
+                        Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    mFFMpeg.setAudio((FFMpeg.AudioRate) cboAudioBitrate.getSelectedItem(), audio, (Float) spinAudioDelay.getValue());
                 }
-                mFFMpeg.setAudio((FFMpeg.AudioRate) cboAudioBitrate.getSelectedItem(), audio, (Float) spinAudioDelay.getValue());
                 String server = "";
                 if (cboRTMPServers.getSelectedItem() != null) {
                     server = cboRTMPServers.getSelectedItem().toString();
@@ -1152,7 +1256,9 @@ public class ScreenStudio extends javax.swing.JFrame {
                     FFMpeg.RunningState initState = f.getState();
                     while (f != null) {
                         if (initState == FFMpeg.RunningState.Starting && f.getState() == FFMpeg.RunningState.Running) {
-                            trayIcon.setImage(new ImageIcon(ScreenStudio.class.getResource("/screenstudio/gui/images/iconRunning.png")).getImage());
+                            if (trayIcon != null) {
+                                trayIcon.setImage(new ImageIcon(ScreenStudio.class.getResource("/screenstudio/gui/images/iconRunning.png")).getImage());
+                            }
                             initState = FFMpeg.RunningState.Running;
                         }
                         long seconds = (System.currentTimeMillis() - mRecordingTimestamp) / 1000;
@@ -1381,6 +1487,9 @@ public class ScreenStudio extends javax.swing.JFrame {
         if (trayIcon != null) {
             SystemTray.getSystemTray().remove(trayIcon);
         }
+        if (mShortcuts != null) {
+            mShortcuts.stop();
+        }
     }//GEN-LAST:event_formWindowClosing
 
     private void cboDefaultRecordingActionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboDefaultRecordingActionActionPerformed
@@ -1394,10 +1503,22 @@ public class ScreenStudio extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_cboDefaultRecordingActionActionPerformed
 
+    private void chkDoNotUseTrayIconActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chkDoNotUseTrayIconActionPerformed
+        java.util.prefs.Preferences p = java.util.prefs.Preferences.userRoot().node("screenstudio");
+        p.putBoolean("DoNotUseTrayIcon", chkDoNotUseTrayIcon.isSelected());
+        try {
+            p.flush();
+        } catch (BackingStoreException ex) {
+            Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+    }//GEN-LAST:event_chkDoNotUseTrayIconActionPerformed
+
     /**
      * @param args the command line arguments
      */
     public static void main(String args[]) {
+        System.out.println("Running on " + System.getProperty("os.name").toLowerCase());
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
@@ -1439,9 +1560,13 @@ public class ScreenStudio extends javax.swing.JFrame {
     private javax.swing.JComboBox<String> cboRTMPServers;
     private javax.swing.JComboBox<FFMpeg.FORMATS> cboTarget;
     private javax.swing.JComboBox<FFMpeg.Presets> cboVideoPresets;
+    private javax.swing.JCheckBox chkDoNotUseTrayIcon;
+    private javax.swing.JCheckBox chkKeepScreenRatio;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
+    private javax.swing.JLabel jLabel12;
+    private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;

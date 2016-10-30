@@ -27,7 +27,7 @@ import screenstudio.sources.Screen;
 public class Version {
 //Using this to set the main version of ScreenStudio
 
-    public final static String MAIN = "3.0.6";
+    public final static String MAIN = "3.0.9";
 
     public static boolean hasNewVersion() {
         boolean retValue = false;
@@ -36,6 +36,8 @@ public class Version {
             String path = "http://screenstudio.crombz.com/archives/ubuntu/ubuntu.last.version";
             if (Screen.isOSX()) {
                 path = "http://screenstudio.crombz.com/archives/osx/osx.last.version";
+            } else if (Screen.isWindows()){
+                path = "http://screenstudio.crombz.com/archives/windows/windows.last.version";
             }
             URL url = new URL(path);
             InputStream in = url.openStream();
