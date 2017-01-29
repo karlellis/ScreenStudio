@@ -1,3 +1,13 @@
+screenstudio (3.1.0) trusty; urgency=medium
+
+  * Fixes: See https://github.com/patrickballeux/screenstudio Changelog
+  * Adds: See https://github.com/patrickballeux/screenstudio Changelog
+  * Changes: See https://github.com/patrickballeux/screenstudio Changelog
+  * Removes: See https://github.com/patrickballeux/screenstudio Changelog
+  * New upstream version
+
+ -- Karl Ellis <soylent.tv@gmail.com>  Sun, 29 Jan 2017 08:14:56 +0100
+
 screenstudio (3.0.6) trusty; urgency=medium
 
   * Fixes: See https://github.com/patrickballeux/screenstudio Changelog
