@@ -202,17 +202,37 @@ public class Layout {
         return settings.getAttributes().getNamedItem("shortcutcapture").getNodeValue();
     }
 
-    public void setOutputVideoFolder(File value) {
+    public void setOutputVideoFolder(String value) {
         Node node = document.createAttribute("outputvideofolder");
-        node.setNodeValue(value.getAbsolutePath());
+        node.setNodeValue(value);
         output.getAttributes().setNamedItem(node);
 
     }
 
-    public File getOutputVideoFolder() {
-        return new File(output.getAttributes().getNamedItem("outputvideofolder").getNodeValue());
+    public String getOutputVideoFolder() {
+        return output.getAttributes().getNamedItem("outputvideofolder").getNodeValue();
     }
 
+    public void setBackgroundMusic(File bgMusic){
+        Node node = document.createAttribute("backgroundmusic");
+        if (bgMusic == null){
+            node.setNodeValue("");
+        } else {
+            node.setNodeValue(bgMusic.getAbsolutePath());
+        }
+        settings.getAttributes().setNamedItem(node);
+    }
+    public File getBackgroundMusic(){
+        File retValue = null;
+        if (settings.getAttributes().getNamedItem("backgroundmusic") != null){
+            String f = settings.getAttributes().getNamedItem("backgroundmusic").getNodeValue();
+            retValue = new File(f);
+            if (f.length() == 0 || !retValue.exists() ){
+                retValue = null;
+            }
+        }
+        return retValue;
+    }
     public void reset() {
         NodeList nodes = root.getChildNodes();
         for (int i = 0; i < nodes.getLength(); i++) {

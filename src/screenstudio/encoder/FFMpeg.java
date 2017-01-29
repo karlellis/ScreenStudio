@@ -13,6 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * ffmpeg -f x11grab -framerate 5 -video_size 1280x800 -i :0.0  -c:v libx264 -crf 18 -profile:v baseline -maxrate 400k -bufsize 1835k -pix_fmt yuv420p -flags -global_header ftp://someserver/www/screenstudio.m3u8
  */
 package screenstudio.encoder;
 
@@ -22,10 +23,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import screenstudio.sources.Compositor;
 import screenstudio.sources.Screen;
+import screenstudio.targets.Pipe;
 
 /**
  *
@@ -98,6 +101,8 @@ public class FFMpeg implements Runnable {
     private String preset = "ultrafast";
     private String strictSetting = "-2";
 
+    private String backgroundMusic = "";
+
     /**
      * Main class wrapper for FFMpeg
      *
@@ -128,7 +133,7 @@ public class FFMpeg implements Runnable {
      * @param rate : Audio rate for the output
      * @param input : device to use
      */
-    public void setAudio(AudioRate rate, String input, Float offset) {
+    public void setAudio(AudioRate rate, String input, Float offset, File bgMusic) {
         switch (rate) {
             case Audio44K:
                 audioRate = "44100";
@@ -149,7 +154,9 @@ public class FFMpeg implements Runnable {
         } else {
             mITSOffset = "";
         }
-
+        if (bgMusic != null) {
+            backgroundMusic = bgMusic.getAbsolutePath();
+        }
     }
 
     public RunningState getState() {
@@ -170,33 +177,41 @@ public class FFMpeg implements Runnable {
      * @param key
      * @param outputFolder
      */
-    public void setOutputFormat(FORMATS format, Presets p, int videoBitrate, String server, String key, File outputFolder) {
+    public void setOutputFormat(FORMATS format, Presets p, int videoBitrate, String server, String key, String outputFolder) {
         preset = p.name();
+        if (outputFolder.contains("\\")) {
+            // Probably a path on Windows...
+            if (!outputFolder.endsWith("\\")) {
+                outputFolder += "\\";
+            }
+        } else if (!outputFolder.endsWith("/")) {
+            outputFolder += "/";
+        }
         switch (format) {
             case FLV:
                 muxer = "flv";
                 videoEncoder = "libx264";
                 audioEncoder = "libmp3lame";
-                output = new File(outputFolder, generateRandomName() + ".flv").getAbsolutePath();
+                output = outputFolder + generateRandomName() + ".flv";
                 break;
             case MP4:
                 muxer = "mp4";
                 videoEncoder = "libx264";
                 audioEncoder = "libmp3lame";
-                output = new File(outputFolder, generateRandomName() + ".mp4").getAbsolutePath();
+                output = outputFolder + generateRandomName() + ".mp4";
                 break;
             case MOV:
                 muxer = "mov";
                 videoEncoder = "libx264";
                 audioEncoder = "libmp3lame";
-                output = new File(outputFolder, generateRandomName() + ".mov").getAbsolutePath();
+                output = outputFolder + generateRandomName() + ".mov";
                 break;
             case TS:
                 preset = "";
                 muxer = "mpegts";
                 videoEncoder = "mpeg2video";
                 audioEncoder = "mp2";
-                output = new File(outputFolder, generateRandomName() + ".ts").getAbsolutePath();
+                output = outputFolder + generateRandomName() + ".ts";
                 break;
             case GIF:
                 muxer = "gif";
@@ -204,7 +219,7 @@ public class FFMpeg implements Runnable {
                 audioEncoder = "";
                 preset = "";
                 String randomName = generateRandomName();
-                output = new File(outputFolder, randomName + ".gif").getAbsolutePath();
+                output = outputFolder + randomName + ".gif";
                 break;
             case RTMP:
             case HITBOX:
@@ -228,6 +243,12 @@ public class FFMpeg implements Runnable {
                 videoEncoder = "mpeg2video";
                 audioEncoder = "mp2";
                 output = "udp://255.255.255.255:8888?broadcast=1";
+                break;
+            case HTTP:
+                muxer = "hls";
+                videoEncoder = "libx264";
+                audioEncoder = "libmp3lame";
+                output = outputFolder + "stream.m3u8";
                 break;
         }
 
@@ -276,6 +297,10 @@ public class FFMpeg implements Runnable {
         // Capture Audio
         if (!videoEncoder.equals("gif")) {
             c.append(" -f ").append(audioFormat).append(mITSOffset).append(" -i ").append(audioInput);
+
+            if (backgroundMusic.length() > 0) {
+                c.append(" -i ").append(backgroundMusic).append(" -filter_complex amix ");
+            }
         }
         // Enabled strict settings
         if (strictSetting.length() > 0) {
@@ -304,13 +329,12 @@ public class FFMpeg implements Runnable {
         if (preset.length() > 0) {
             c.append(" -preset ").append(preset);
         }
+        if (output.endsWith(".m3u8")) {
+            c.append(" -flags -global_header -hls_time 10 -hls_wrap 6 ");
+        }
         String buffer = " -g " + (compositor.getFPS() * 2);
-        c.append(buffer).append(" -f ").append(muxer).append(" ");
+        c.append(buffer).append(" -y -f ").append(muxer).append(" ");
         c.append(output);
-        // Set proper output
-        //if (mDebugMode) {
-        System.out.println(c.toString());
-        //}
         return c.toString();
     }
 
@@ -383,6 +407,13 @@ public class FFMpeg implements Runnable {
                     Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
+            Pipe pipe = null;
+//            if (Screen.isWindows()){
+            pipe = new Pipe();
+            new Thread(pipe).start();
+            command = command.replaceAll("-i -", "-i " + pipe.getServer());
+//            }
+            System.out.println(command);
             Process p = Runtime.getRuntime().exec(command);
             OutputStream out = p.getOutputStream();
             InputStream in = p.getErrorStream();
@@ -393,8 +424,11 @@ public class FFMpeg implements Runnable {
             System.out.println("Starting encoding...");
             while (!mStopMe) {
                 try {
-                    out.write(compositor.getData());
-//                    System.out.println("Data written " + System.currentTimeMillis());
+                    if (pipe != null) {
+                        pipe.write(compositor.getData());
+                    } else {
+                        out.write(compositor.getData());
+                    }
                 } catch (Exception exWrite) {
                     System.err.println("Exception while writing...  " + exWrite.getMessage());
                     this.lastErrorMessage = exWrite.getMessage();
@@ -414,7 +448,21 @@ public class FFMpeg implements Runnable {
             System.out.println("Exiting encoder...");
             System.out.println("Status : " + state.toString());
             in.close();
-            out.close();
+            if (pipe != null) {
+                pipe.close();
+                out.write("q\n".getBytes());
+                out.close();
+                out = null;
+                try {
+                    p.waitFor(15, TimeUnit.SECONDS);
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(FFMpeg.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+            if (out != null) {
+                out.close();
+                out = null;
+            }
             compositor.stop();
             p.destroy();
             p = null;
@@ -443,6 +491,7 @@ public class FFMpeg implements Runnable {
         YOUTUBE,
         FACEBOOK,
         RTMP,
+        HTTP,
         BROADCAST,
     }
 
