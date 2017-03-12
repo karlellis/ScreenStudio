@@ -27,13 +27,19 @@ import java.awt.Rectangle;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
+import javax.swing.Action;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
@@ -48,12 +54,14 @@ import org.xml.sax.SAXException;
 import screenstudio.Version;
 import screenstudio.encoder.FFMpeg;
 import screenstudio.panel.editor.Editor;
+import screenstudio.remote.HTTPServer;
 import screenstudio.sources.Compositor;
 import screenstudio.sources.Microphone;
 import screenstudio.sources.Screen;
 import screenstudio.sources.Source;
 import screenstudio.sources.SystemCheck;
 import screenstudio.sources.Webcam;
+import screenstudio.sources.transitions.Transition;
 import screenstudio.targets.Layout;
 import screenstudio.targets.Layout.SourceType;
 
@@ -70,6 +78,7 @@ public class ScreenStudio extends javax.swing.JFrame {
     private java.awt.TrayIcon trayIcon;
     private final com.tulskiy.keymaster.common.Provider mShortcuts;
     private File mBackgroundMusic = null;
+    private HTTPServer mRemote;
 
     /**
      * Creates new form MainVersion3
@@ -112,7 +121,13 @@ public class ScreenStudio extends javax.swing.JFrame {
                 }
             }
         });
-
+        mRemote = new HTTPServer(null, null,mnuCapture);
+        new Thread(mRemote).start();
+        try {
+            lblRemoteMessage.setText("Remote: http://" + Inet4Address.getLocalHost().getHostName() + ".local:" + mRemote.getPort());
+        } catch (UnknownHostException ex) {
+            Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     private void initControls() {
@@ -120,6 +135,8 @@ public class ScreenStudio extends javax.swing.JFrame {
         while (model.getRowCount() > 0) {
             model.removeRow(0);
         }
+        updateRemoteSources();
+
         cboTarget.setModel(new DefaultComboBoxModel<>(FFMpeg.FORMATS.values()));
         cboTarget.setSelectedIndex(0);
         cboVideoPresets.setModel(new DefaultComboBoxModel<>(FFMpeg.Presets.values()));
@@ -176,6 +193,31 @@ public class ScreenStudio extends javax.swing.JFrame {
 
         if (Screen.isOSX() || Screen.isWindows()) {
             cboAudioSystems.setEnabled(false);
+        }
+
+        for (Transition.NAMES t : Transition.NAMES.values()) {
+            popMnuSourceTransitionIn.add(t.name());
+            popMnuSourceTransitionOut.add(t.name());
+        }
+        for (int i = 0; i < popMnuSourceTransitionIn.getItemCount(); i++) {
+            JMenuItem m = popMnuSourceTransitionIn.getItem(i);
+            m.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    if (tableSources.getSelectedRow() != -1) {
+                        tableSources.setValueAt(e.getActionCommand(), tableSources.getSelectedRow(), 10);
+                    }
+                }
+            });
+            m = popMnuSourceTransitionOut.getItem(i);
+            m.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    if (tableSources.getSelectedRow() != -1) {
+                        tableSources.setValueAt(e.getActionCommand(), tableSources.getSelectedRow(), 11);
+                    }
+                }
+            });
         }
     }
 
@@ -248,10 +290,11 @@ public class ScreenStudio extends javax.swing.JFrame {
             while (model.getRowCount() > 0) {
                 model.removeRow(0);
             }
+
             Webcam[] webcams = Webcam.getSources();
             for (screenstudio.targets.Source s : layout.getSources()) {
                 Object[] row = new Object[model.getColumnCount()];
-                row[0] = true;
+                row[0] = s.remoteDisplay;
                 row[1] = s.Type;
                 row[2] = "Not found!";
                 row[3] = s.X;
@@ -259,6 +302,10 @@ public class ScreenStudio extends javax.swing.JFrame {
                 row[5] = s.Width;
                 row[6] = s.Height;
                 row[7] = s.Alpha;
+                row[8] = s.startTime;
+                row[9] = s.endTime;
+                row[10] = s.transitionStart;
+                row[11] = s.transitionStop;
                 switch (s.Type) {
                     case Desktop:
                         row[0] = false;
@@ -266,7 +313,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                         for (Screen screen : screens) {
                             if (screen.getLabel().equals(s.ID)) {
                                 row[2] = screen;
-                                row[0] = true;
+                                row[0] = s.remoteDisplay;
                                 if (s.CaptureX != 0 || s.CaptureY != 0) {
                                     screen.getSize().width = s.Width;
                                     screen.getSize().height = s.Height;
@@ -279,7 +326,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                         break;
                     case Image:
                         row[2] = new File(s.ID);
-                        row[0] = new File(s.ID).exists();
+                        row[0] = s.remoteDisplay && new File(s.ID).exists();
                         break;
                     case LabelText:
                         LabelText t = new LabelText(s.ID);
@@ -294,14 +341,14 @@ public class ScreenStudio extends javax.swing.JFrame {
                         break;
                     case Video:
                         row[2] = new File(s.ID);
-                        row[0] = new File(s.ID).exists();
+                        row[0] = s.remoteDisplay && new File(s.ID).exists();
                         break;
                     case Webcam:
                         row[0] = false;
                         for (Webcam webcam : webcams) {
                             if (webcam.getDevice().equals(s.ID)) {
                                 row[2] = webcam;
-                                row[0] = true;
+                                row[0] = s.remoteDisplay;
                                 break;
                             }
                         }
@@ -312,7 +359,7 @@ public class ScreenStudio extends javax.swing.JFrame {
         } catch (IOException | ParserConfigurationException | SAXException | InterruptedException ex) {
             Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
         }
-
+        updateRemoteSources();
         panPreviewLayout.repaint();
     }
 
@@ -337,7 +384,7 @@ public class ScreenStudio extends javax.swing.JFrame {
         layout.setBackgroundMusic(mBackgroundMusic);
         List<Source> sources = Compositor.getSources(tableSources, (Integer) spinFPS.getValue());
         for (Source s : sources) {
-            layout.addSource(s.getType(), s.getID(), s.getBounds().x, s.getBounds().y, s.getBounds().width, s.getBounds().height, s.getAlpha().getAlpha(), s.getZOrder(), s.getForeground(), s.getBackground(), s.getFontName(), s.getCaptureX(), s.getCaptureY());
+            layout.addSource(s.getType(), s.getID(), s.getBounds().x, s.getBounds().y, s.getBounds().width, s.getBounds().height, s.getAlpha().getAlpha(), s.getZOrder(), s.getForeground(), s.getBackground(), s.getFontName(), s.getCaptureX(), s.getCaptureY(), s.getStartDisplayTime(), s.getEndDisplayTime(), s.getTransitionStart().name(), s.getTransitionStop().name(),s.isRemoteDisplay());
         }
         try {
             layout.save(file);
@@ -403,7 +450,13 @@ public class ScreenStudio extends javax.swing.JFrame {
                                 row[5] = webcam.getWidth();
                                 row[6] = webcam.getHeight();
                                 row[7] = 1;
+                                row[8] = 0L;
+                                row[9] = 0L;
+                                row[10] = Transition.NAMES.None.name();
+                                row[11] = Transition.NAMES.None.name();
                                 model.addRow(row);
+                                updateRemoteSources();
+
                                 mLayoutPreview.repaint();
                                 tabs.setSelectedComponent(panSources);
                                 break;
@@ -419,6 +472,16 @@ public class ScreenStudio extends javax.swing.JFrame {
             }
         } catch (IOException | InterruptedException ex) {
             Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void updateRemoteSources() {
+        ArrayList<String> sources = new ArrayList<>();
+        for (int i = tableSources.getRowCount()-1; i >=0; i--) {
+            sources.add(tableSources.getValueAt(i, 2).toString());
+        }
+        if (mRemote != null) {
+            mRemote.setSourceIDs(sources);
         }
     }
 
@@ -444,7 +507,13 @@ public class ScreenStudio extends javax.swing.JFrame {
                                 row[5] = spinWidth.getValue();
                                 row[6] = spinHeight.getValue();
                                 row[7] = 1;
+                                row[8] = 0L;
+                                row[9] = 0L;
+                                row[10] = Transition.NAMES.None.name();
+                                row[11] = Transition.NAMES.None.name();
                                 model.addRow(row);
+                                updateRemoteSources();
+
                                 mLayoutPreview.repaint();
                                 tabs.setSelectedComponent(panSources);
                                 break;
@@ -472,6 +541,9 @@ public class ScreenStudio extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        popSources = new javax.swing.JPopupMenu();
+        popMnuSourceTransitionIn = new javax.swing.JMenu();
+        popMnuSourceTransitionOut = new javax.swing.JMenu();
         tabs = new javax.swing.JTabbedPane();
         panOutput = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
@@ -495,7 +567,7 @@ public class ScreenStudio extends javax.swing.JFrame {
         txtRTMPKey = new javax.swing.JTextField();
         chkKeepScreenRatio = new javax.swing.JCheckBox();
         panSources = new javax.swing.JPanel();
-        jSplitPane1 = new javax.swing.JSplitPane();
+        splitterSources = new javax.swing.JSplitPane();
         panPreviewLayout = new javax.swing.JPanel();
         scrollSources = new javax.swing.JScrollPane();
         tableSources = new javax.swing.JTable();
@@ -521,6 +593,7 @@ public class ScreenStudio extends javax.swing.JFrame {
         btnBGMusicBrowse = new javax.swing.JButton();
         panStatus = new javax.swing.JPanel();
         lblMessages = new javax.swing.JLabel();
+        lblRemoteMessage = new javax.swing.JLabel();
         menuBar = new javax.swing.JMenuBar();
         mnuFile = new javax.swing.JMenu();
         mnuCapture = new javax.swing.JMenuItem();
@@ -537,6 +610,12 @@ public class ScreenStudio extends javax.swing.JFrame {
         mnuMainMoveDown = new javax.swing.JMenuItem();
         jSeparator2 = new javax.swing.JPopupMenu.Separator();
         mnuMainRemove = new javax.swing.JMenuItem();
+
+        popMnuSourceTransitionIn.setText("Transition In");
+        popSources.add(popMnuSourceTransitionIn);
+
+        popMnuSourceTransitionOut.setText("Transition Out");
+        popSources.add(popMnuSourceTransitionOut);
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("ScreenStudio");
@@ -707,32 +786,32 @@ public class ScreenStudio extends javax.swing.JFrame {
 
         panSources.setLayout(new java.awt.BorderLayout());
 
-        jSplitPane1.setDividerLocation(150);
-        jSplitPane1.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
+        splitterSources.setDividerLocation(150);
+        splitterSources.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
 
         panPreviewLayout.setBackground(new java.awt.Color(51, 51, 51));
         panPreviewLayout.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Layout", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Dialog", 0, 12), new java.awt.Color(255, 255, 255))); // NOI18N
         panPreviewLayout.setLayout(new java.awt.BorderLayout());
-        jSplitPane1.setRightComponent(panPreviewLayout);
+        splitterSources.setRightComponent(panPreviewLayout);
 
         scrollSources.setBorder(javax.swing.BorderFactory.createTitledBorder("Video Sources"));
 
         tableSources.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null, null}
+                {null, null, null, null, null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null, null, null, null, null}
             },
             new String [] {
-                " ", "Source", "Description", "X", "Y", "Width", "Height", "Alpha"
+                " ", "Source", "Description", "X", "Y", "Width", "Height", "Alpha", "Start", "End", "Trans-In", "Trans-Out"
             }
         ) {
             Class[] types = new Class [] {
-                java.lang.Boolean.class, java.lang.String.class, java.lang.String.class, java.lang.Integer.class, java.lang.Integer.class, java.lang.Integer.class, java.lang.Integer.class, java.lang.Float.class
+                java.lang.Boolean.class, java.lang.String.class, java.lang.String.class, java.lang.Integer.class, java.lang.Integer.class, java.lang.Integer.class, java.lang.Integer.class, java.lang.Float.class, java.lang.Long.class, java.lang.Long.class, java.lang.String.class, java.lang.String.class
             };
             boolean[] canEdit = new boolean [] {
-                true, false, false, true, true, true, true, true
+                true, false, false, true, true, true, true, true, true, true, false, false
             };
 
             public Class getColumnClass(int columnIndex) {
@@ -744,11 +823,12 @@ public class ScreenStudio extends javax.swing.JFrame {
             }
         });
         tableSources.setToolTipText("Double-click for more options...");
-        tableSources.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_LAST_COLUMN);
+        tableSources.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
         tableSources.setColumnSelectionAllowed(true);
+        tableSources.setComponentPopupMenu(popSources);
         tableSources.setFillsViewportHeight(true);
         tableSources.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        tableSources.getTableHeader().setResizingAllowed(false);
+        tableSources.setSurrendersFocusOnKeystroke(true);
         tableSources.getTableHeader().setReorderingAllowed(false);
         tableSources.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -768,35 +848,35 @@ public class ScreenStudio extends javax.swing.JFrame {
         scrollSources.setViewportView(tableSources);
         tableSources.getColumnModel().getSelectionModel().setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         if (tableSources.getColumnModel().getColumnCount() > 0) {
-            tableSources.getColumnModel().getColumn(0).setMinWidth(25);
+            tableSources.getColumnModel().getColumn(0).setResizable(false);
             tableSources.getColumnModel().getColumn(0).setPreferredWidth(25);
-            tableSources.getColumnModel().getColumn(0).setMaxWidth(25);
-            tableSources.getColumnModel().getColumn(1).setMinWidth(100);
+            tableSources.getColumnModel().getColumn(1).setResizable(false);
             tableSources.getColumnModel().getColumn(1).setPreferredWidth(100);
-            tableSources.getColumnModel().getColumn(1).setMaxWidth(100);
             tableSources.getColumnModel().getColumn(2).setMinWidth(150);
             tableSources.getColumnModel().getColumn(2).setPreferredWidth(150);
-            tableSources.getColumnModel().getColumn(2).setMaxWidth(2000);
-            tableSources.getColumnModel().getColumn(3).setMinWidth(60);
+            tableSources.getColumnModel().getColumn(3).setResizable(false);
             tableSources.getColumnModel().getColumn(3).setPreferredWidth(60);
-            tableSources.getColumnModel().getColumn(3).setMaxWidth(60);
-            tableSources.getColumnModel().getColumn(4).setMinWidth(60);
+            tableSources.getColumnModel().getColumn(4).setResizable(false);
             tableSources.getColumnModel().getColumn(4).setPreferredWidth(60);
-            tableSources.getColumnModel().getColumn(4).setMaxWidth(60);
-            tableSources.getColumnModel().getColumn(5).setMinWidth(60);
+            tableSources.getColumnModel().getColumn(5).setResizable(false);
             tableSources.getColumnModel().getColumn(5).setPreferredWidth(60);
-            tableSources.getColumnModel().getColumn(5).setMaxWidth(60);
-            tableSources.getColumnModel().getColumn(6).setMinWidth(60);
+            tableSources.getColumnModel().getColumn(6).setResizable(false);
             tableSources.getColumnModel().getColumn(6).setPreferredWidth(60);
-            tableSources.getColumnModel().getColumn(6).setMaxWidth(60);
-            tableSources.getColumnModel().getColumn(7).setMinWidth(60);
+            tableSources.getColumnModel().getColumn(7).setResizable(false);
             tableSources.getColumnModel().getColumn(7).setPreferredWidth(60);
-            tableSources.getColumnModel().getColumn(7).setMaxWidth(60);
+            tableSources.getColumnModel().getColumn(8).setResizable(false);
+            tableSources.getColumnModel().getColumn(8).setPreferredWidth(60);
+            tableSources.getColumnModel().getColumn(9).setResizable(false);
+            tableSources.getColumnModel().getColumn(9).setPreferredWidth(60);
+            tableSources.getColumnModel().getColumn(10).setResizable(false);
+            tableSources.getColumnModel().getColumn(10).setPreferredWidth(95);
+            tableSources.getColumnModel().getColumn(11).setResizable(false);
+            tableSources.getColumnModel().getColumn(11).setPreferredWidth(95);
         }
 
-        jSplitPane1.setLeftComponent(scrollSources);
+        splitterSources.setLeftComponent(scrollSources);
 
-        panSources.add(jSplitPane1, java.awt.BorderLayout.CENTER);
+        panSources.add(splitterSources, java.awt.BorderLayout.CENTER);
 
         tabs.addTab("Sources", panSources);
 
@@ -1004,10 +1084,16 @@ public class ScreenStudio extends javax.swing.JFrame {
 
         panStatus.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.LOWERED));
         panStatus.setPreferredSize(new java.awt.Dimension(767, 20));
-        panStatus.setLayout(new javax.swing.BoxLayout(panStatus, javax.swing.BoxLayout.LINE_AXIS));
+        panStatus.setLayout(new java.awt.GridLayout());
 
         lblMessages.setText("Welcome to ScreenStudio");
         panStatus.add(lblMessages);
+
+        lblRemoteMessage.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        lblRemoteMessage.setText("...");
+        panStatus.add(lblRemoteMessage);
+        lblRemoteMessage.getAccessibleContext().setAccessibleName("");
+        lblRemoteMessage.getAccessibleContext().setAccessibleDescription("");
 
         getContentPane().add(panStatus, java.awt.BorderLayout.SOUTH);
 
@@ -1198,36 +1284,53 @@ public class ScreenStudio extends javax.swing.JFrame {
             } else {
                 lblMessages.setText("Stopped...");
             }
-            mFFMpeg.stop();
-            try {
-                Microphone.getVirtualAudio(null, null);
-            } catch (IOException | InterruptedException ex) {
-                Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            mFFMpeg = null;
-            mnuCapture.setText("Record");
-            switch (cboDefaultRecordingAction.getSelectedIndex()) {
-                case 0: // Hide
-                    if (trayIcon != null) {
-                        this.setVisible(true);
-                    } else {
-                        this.setExtendedState(JFrame.NORMAL);
+            mnuCapture.setEnabled(false);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    mFFMpeg.stop();
+                    while (mFFMpeg.getState() == FFMpeg.RunningState.Running) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException ex) {
+                            Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+                        }
                     }
-                    break;
-                case 1: // Minimize
-                    this.setExtendedState(JFrame.NORMAL);
-                    break;
-                case 2: // Stay Visible
-                    break;
-            }
+                    try {
+                        Microphone.getVirtualAudio(null, null);
+                    } catch (IOException | InterruptedException ex) {
+                        Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    mFFMpeg = null;
+                    mnuCapture.setText("Record");
+                    switch (cboDefaultRecordingAction.getSelectedIndex()) {
+                        case 0: // Hide
+                            if (trayIcon != null) {
+                                setVisible(true);
+                            } else {
+                                setExtendedState(JFrame.NORMAL);
+                            }
+                            break;
+                        case 1: // Minimize
+                            setExtendedState(JFrame.NORMAL);
+                            break;
+                        case 2: // Stay Visible
+                            break;
+                    }
 
-            if (trayIcon != null) {
-                trayIcon.setImage(this.getIconImage());
-            }
-            updateControls(true);
-            if (FFMpeg.isRTMP((FFMpeg.FORMATS) cboTarget.getSelectedItem())) {
-                txtRTMPKey.setVisible(true);
-            }
+                    if (trayIcon != null) {
+                        trayIcon.setImage(getIconImage());
+                    }
+                    updateControls(true);
+                    if (FFMpeg.isRTMP((FFMpeg.FORMATS) cboTarget.getSelectedItem())) {
+                        txtRTMPKey.setVisible(true);
+                    }
+                    mnuCapture.setEnabled(true);
+                    mRemote.setCompositor(null);
+
+                }
+            }).start();
+
         } else {
             if (trayIcon != null) {
                 trayIcon.setImage(new ImageIcon(ScreenStudio.class.getResource("/screenstudio/gui/images/iconStarting.png")).getImage());
@@ -1248,6 +1351,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                 List<Source> sources = Compositor.getSources(tableSources, (Integer) spinFPS.getValue());
                 Compositor compositor = new Compositor(sources, new Rectangle(0, 0, (Integer) spinWidth.getValue(), (Integer) spinHeight.getValue()), (Integer) spinFPS.getValue());
                 mFFMpeg = new FFMpeg(compositor);
+                mRemote.setCompositor(compositor);
                 String audio = "default";
                 Microphone mic = null;
                 Microphone sys = null;
@@ -1265,7 +1369,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                     } catch (InterruptedException ex) {
                         Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
                     }
-                    mFFMpeg.setAudio((FFMpeg.AudioRate) cboAudioBitrate.getSelectedItem(), audio, (Float) spinAudioDelay.getValue(),mBackgroundMusic);
+                    mFFMpeg.setAudio((FFMpeg.AudioRate) cboAudioBitrate.getSelectedItem(), audio, (Float) spinAudioDelay.getValue(), mBackgroundMusic);
                 }
                 String server = "";
                 if (cboRTMPServers.getSelectedItem() != null) {
@@ -1438,7 +1542,12 @@ public class ScreenStudio extends javax.swing.JFrame {
             row[5] = 200;
             row[6] = 200;
             row[7] = 1.0f;
+            row[8] = 0L;
+            row[9] = 0L;
+            row[10] = Transition.NAMES.None.name();
+            row[11] = Transition.NAMES.None.name();
             model.addRow(row);
+            updateRemoteSources();
         }
         mLayoutPreview.repaint();
         tabs.setSelectedComponent(panSources);
@@ -1455,7 +1564,13 @@ public class ScreenStudio extends javax.swing.JFrame {
         row[5] = 300;
         row[6] = 100;
         row[7] = 1.0f;
+        row[8] = 0L;
+        row[9] = 0L;
+        row[10] = Transition.NAMES.None.name();
+        row[11] = Transition.NAMES.None.name();
         model.addRow(row);
+        updateRemoteSources();
+
         mLayoutPreview.repaint();
         tabs.setSelectedComponent(panSources);
     }//GEN-LAST:event_mnuMainAddLabelActionPerformed
@@ -1472,6 +1587,7 @@ public class ScreenStudio extends javax.swing.JFrame {
             tableSources.setRowSelectionInterval(index, index);
             mLayoutPreview.repaint();
             tabs.setSelectedComponent(panSources);
+            updateRemoteSources();
         }
     }//GEN-LAST:event_mnuMainMoveUpActionPerformed
 
@@ -1487,6 +1603,7 @@ public class ScreenStudio extends javax.swing.JFrame {
             tableSources.setRowSelectionInterval(index, index);
             mLayoutPreview.repaint();
             tabs.setSelectedComponent(panSources);
+            updateRemoteSources();
         }
     }//GEN-LAST:event_mnuMainMoveDownActionPerformed
 
@@ -1513,6 +1630,7 @@ public class ScreenStudio extends javax.swing.JFrame {
             int index = tableSources.getSelectedRow();
             DefaultTableModel model = (DefaultTableModel) tableSources.getModel();
             model.removeRow(index);
+            updateRemoteSources();
             mLayoutPreview.repaint();
         }
     }//GEN-LAST:event_mnuMainRemoveActionPerformed
@@ -1530,6 +1648,10 @@ public class ScreenStudio extends javax.swing.JFrame {
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         if (trayIcon != null) {
             SystemTray.getSystemTray().remove(trayIcon);
+        }
+        if (mRemote != null) {
+            mRemote.shutdown();
+            mRemote = null;
         }
         if (mShortcuts != null) {
             mShortcuts.stop();
@@ -1661,11 +1783,11 @@ public class ScreenStudio extends javax.swing.JFrame {
     private javax.swing.JPopupMenu.Separator jSeparator1;
     private javax.swing.JPopupMenu.Separator jSeparator2;
     private javax.swing.JPopupMenu.Separator jSeparator3;
-    private javax.swing.JSplitPane jSplitPane1;
     private javax.swing.JLabel lblBGMusic;
     private javax.swing.JLabel lblMessages;
     private javax.swing.JLabel lblRTMPKey;
     private javax.swing.JLabel lblRTMPServer;
+    private javax.swing.JLabel lblRemoteMessage;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenuItem mnuCapture;
     private javax.swing.JMenu mnuEdit;
@@ -1689,11 +1811,15 @@ public class ScreenStudio extends javax.swing.JFrame {
     private javax.swing.JPanel panSources;
     private javax.swing.JPanel panStatus;
     private javax.swing.JPanel panTargetSettings;
+    private javax.swing.JMenu popMnuSourceTransitionIn;
+    private javax.swing.JMenu popMnuSourceTransitionOut;
+    private javax.swing.JPopupMenu popSources;
     private javax.swing.JScrollPane scrollSources;
     private javax.swing.JSpinner spinAudioDelay;
     private javax.swing.JSpinner spinFPS;
     private javax.swing.JSpinner spinHeight;
     private javax.swing.JSpinner spinWidth;
+    private javax.swing.JSplitPane splitterSources;
     private javax.swing.JTable tableSources;
     private javax.swing.JTabbedPane tabs;
     private javax.swing.JTextField txtRTMPKey;
