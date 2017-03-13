@@ -121,7 +121,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                 }
             }
         });
-        mRemote = new HTTPServer(null, null,mnuCapture);
+        mRemote = new HTTPServer(null, null, mnuCapture);
         new Thread(mRemote).start();
         try {
             lblRemoteMessage.setText("Remote: http://" + Inet4Address.getLocalHost().getHostName() + ".local:" + mRemote.getPort());
@@ -384,7 +384,7 @@ public class ScreenStudio extends javax.swing.JFrame {
         layout.setBackgroundMusic(mBackgroundMusic);
         List<Source> sources = Compositor.getSources(tableSources, (Integer) spinFPS.getValue());
         for (Source s : sources) {
-            layout.addSource(s.getType(), s.getID(), s.getBounds().x, s.getBounds().y, s.getBounds().width, s.getBounds().height, s.getAlpha().getAlpha(), s.getZOrder(), s.getForeground(), s.getBackground(), s.getFontName(), s.getCaptureX(), s.getCaptureY(), s.getStartDisplayTime(), s.getEndDisplayTime(), s.getTransitionStart().name(), s.getTransitionStop().name(),s.isRemoteDisplay());
+            layout.addSource(s.getType(), s.getID(), s.getBounds().x, s.getBounds().y, s.getBounds().width, s.getBounds().height, s.getAlpha().getAlpha(), s.getZOrder(), s.getForeground(), s.getBackground(), s.getFontName(), s.getCaptureX(), s.getCaptureY(), s.getStartDisplayTime(), s.getEndDisplayTime(), s.getTransitionStart().name(), s.getTransitionStop().name(), s.isRemoteDisplay());
         }
         try {
             layout.save(file);
@@ -477,7 +477,7 @@ public class ScreenStudio extends javax.swing.JFrame {
 
     private void updateRemoteSources() {
         ArrayList<String> sources = new ArrayList<>();
-        for (int i = tableSources.getRowCount()-1; i >=0; i--) {
+        for (int i = tableSources.getRowCount() - 1; i >= 0; i--) {
             sources.add(tableSources.getValueAt(i, 2).toString());
         }
         if (mRemote != null) {
@@ -682,13 +682,17 @@ public class ScreenStudio extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(panTargetSettingsLayout.createSequentialGroup()
+                        .addComponent(lblRTMPKey, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(txtRTMPKey, javax.swing.GroupLayout.PREFERRED_SIZE, 435, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(panTargetSettingsLayout.createSequentialGroup()
                         .addGroup(panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, 128, Short.MAX_VALUE)
                             .addComponent(lblRTMPServer, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(cboAudioBitrate, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboRTMPServers, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGroup(panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(cboAudioBitrate, 0, 162, Short.MAX_VALUE)
+                            .addComponent(cboRTMPServers, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                     .addGroup(panTargetSettingsLayout.createSequentialGroup()
                         .addGroup(panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                             .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -696,11 +700,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(numVideoBitrate, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cboVideoPresets, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(panTargetSettingsLayout.createSequentialGroup()
-                        .addComponent(lblRTMPKey, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(txtRTMPKey, javax.swing.GroupLayout.PREFERRED_SIZE, 435, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(cboVideoPresets, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         panTargetSettingsLayout.setVerticalGroup(
@@ -1084,7 +1084,7 @@ public class ScreenStudio extends javax.swing.JFrame {
 
         panStatus.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.LOWERED));
         panStatus.setPreferredSize(new java.awt.Dimension(767, 20));
-        panStatus.setLayout(new java.awt.GridLayout());
+        panStatus.setLayout(new java.awt.GridLayout(1, 0));
 
         lblMessages.setText("Welcome to ScreenStudio");
         panStatus.add(lblMessages);
@@ -1728,21 +1728,19 @@ public class ScreenStudio extends javax.swing.JFrame {
          * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
          */
         try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(ScreenStudio.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(ScreenStudio.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(ScreenStudio.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+//            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+//                if ("Nimbus".equals(info.getName())) {
+//                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+//                    break;
+//                }
+//            }
+            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
             java.util.logging.Logger.getLogger(ScreenStudio.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        //</editor-fold>
+        //</editor-fold>
+        
         //</editor-fold>
         //</editor-fold>
 
