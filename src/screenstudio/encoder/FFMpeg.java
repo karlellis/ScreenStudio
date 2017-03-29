@@ -151,6 +151,10 @@ public class FFMpeg implements Runnable {
                 break;
         }
         audioInput = input;
+        if ("ScreenStudio-jackd".equals(audioInput)){
+            //Using jackd interface...
+            audioFormat = "jack";
+        }
         if (offset != 0) {
             mITSOffset = offset.toString();
         } else {
@@ -481,6 +485,7 @@ public class FFMpeg implements Runnable {
                     System.err.println("Exception while writing...  " + exWrite.getMessage());
                     this.lastErrorMessage = exWrite.getMessage();
                     state = RunningState.Error;
+                    mStopDelay = System.currentTimeMillis();
                     mStopMe = true;
                 }
                 long wait = nextPTS - System.nanoTime();

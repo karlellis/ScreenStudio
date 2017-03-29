@@ -21,13 +21,14 @@ import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
-import java.util.HashSet;
+import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JTable;
 import screenstudio.gui.LabelText;
+import screenstudio.gui.images.frames.Frames;
+import screenstudio.sources.effects.Effect;
 import screenstudio.sources.transitions.Transition;
 import screenstudio.targets.Layout;
 
@@ -47,6 +48,8 @@ public class Compositor {
     private boolean mRequestStop = false;
     private final BufferedImage mImage;
     private byte[] mPreviewBuffer;
+    private long mTimeDelta = 0;
+    private Effect mEffects = new Effect();
 
     public Compositor(java.util.List<Source> sources, Rectangle outputSize, int fps) {
         sources.sort((a, b) -> Integer.compare(b.getZOrder(), a.getZOrder()));
@@ -65,6 +68,9 @@ public class Compositor {
         }
         // Apply transitions...
         for (Source s : mSources) {
+            if (!s.isRemoteDisplay()) {
+                s.setDisplayTime(-1, -1);
+            }
             if (s.getTransitionStart() != Transition.NAMES.None && s.getStartDisplayTime() == 0) {
                 Transition t = Transition.getInstance(s.getTransitionStart(), s, fps, this.mOutputSize);
                 new Thread(t).start();
@@ -75,6 +81,10 @@ public class Compositor {
         mData = ((DataBufferByte) mImage.getRaster().getDataBuffer()).getData();
         mStartTime = System.currentTimeMillis();
         mIsReady = true;
+    }
+
+    public long getTimeDelta() {
+        return mTimeDelta;
     }
 
     public List<Source> getSources() {
@@ -95,11 +105,11 @@ public class Compositor {
 
     public byte[] getData() {
         java.util.Arrays.fill(mData, (byte) 0);
-        long timeDelta = (System.currentTimeMillis() - mStartTime) / 1000;
+        mTimeDelta = (System.currentTimeMillis() - mStartTime) / 1000;
         for (Source s : mSources) {
-            BufferedImage img = s.getImage();
-            if (s.isRemoteDisplay() && (s.getEndDisplayTime() == 0 || s.getEndDisplayTime() >= timeDelta)
-                    && (s.getStartDisplayTime() <= timeDelta)) {
+            BufferedImage img = mEffects.apply(s.getEffect(), s.getImage());
+            if ((s.getEndDisplayTime() == 0 || s.getEndDisplayTime() >= mTimeDelta)
+                    && (s.getStartDisplayTime() <= mTimeDelta)) {
                 //Showing for the first time???
                 if (s.getTransitionStart() != Transition.NAMES.None && s.getStartDisplayTime() != 0) {
                     //Then we can trigger the start event...
@@ -107,7 +117,7 @@ public class Compositor {
                     new Thread(t).start();
                     s.setTransitionStart(Transition.NAMES.None);
                 } else {
-                    if (s.getTransitionStop() != Transition.NAMES.None && (mRequestStop || (s.getEndDisplayTime() - 1 == timeDelta))) {
+                    if (s.getTransitionStop() != Transition.NAMES.None && (mRequestStop || (s.getEndDisplayTime() - 1 == mTimeDelta))) {
                         Transition t = Transition.getInstance(s.getTransitionStop(), s, mFPS, mOutputSize);
                         new Thread(t).start();
                         s.setTransitionStop(Transition.NAMES.None);
@@ -154,6 +164,7 @@ public class Compositor {
             long timeend = (Long) sources.getValueAt(i, 9);
             String transIn = sources.getValueAt(i, 10).toString();
             String transOut = sources.getValueAt(i, 11).toString();
+            String effect = sources.getValueAt(i, 12).toString();
             Object source = sources.getValueAt(i, 2);
             // Detect type of source...
             if (source instanceof Screen) {
@@ -166,6 +177,7 @@ public class Compositor {
                 s.setTransitionStart(Transition.NAMES.valueOf(transIn));
                 s.setTransitionStop(Transition.NAMES.valueOf(transOut));
                 s.setRemoteDisplay((Boolean) sources.getValueAt(i, 0));
+                s.setEffect(Effect.eEffects.valueOf(effect));
                 list.add(s);
             } else if (source instanceof Webcam) {
                 Webcam webcam = (Webcam) source;
@@ -180,6 +192,7 @@ public class Compositor {
                 s.setTransitionStart(Transition.NAMES.valueOf(transIn));
                 s.setTransitionStop(Transition.NAMES.valueOf(transOut));
                 s.setRemoteDisplay((Boolean) sources.getValueAt(i, 0));
+                s.setEffect(Effect.eEffects.valueOf(effect));
                 list.add(s);
             } else if (source instanceof File) {
                 switch ((Layout.SourceType) sources.getValueAt(i, 1)) {
@@ -189,6 +202,7 @@ public class Compositor {
                         s.setTransitionStart(Transition.NAMES.valueOf(transIn));
                         s.setTransitionStop(Transition.NAMES.valueOf(transOut));
                         s.setRemoteDisplay((Boolean) sources.getValueAt(i, 0));
+                        s.setEffect(Effect.eEffects.valueOf(effect));
                         list.add(s);
                         break;
                     case Video:
@@ -199,6 +213,7 @@ public class Compositor {
                         sf.setTransitionStart(Transition.NAMES.valueOf(transIn));
                         sf.setTransitionStop(Transition.NAMES.valueOf(transOut));
                         sf.setRemoteDisplay((Boolean) sources.getValueAt(i, 0));
+                        sf.setEffect(Effect.eEffects.valueOf(effect));
                         list.add(sf);
                         break;
                 }
@@ -208,7 +223,19 @@ public class Compositor {
                 s.setTransitionStart(Transition.NAMES.valueOf(transIn));
                 s.setTransitionStop(Transition.NAMES.valueOf(transOut));
                 s.setRemoteDisplay((Boolean) sources.getValueAt(i, 0));
+                s.setEffect(Effect.eEffects.valueOf(effect));
                 list.add(s);
+            } else if (source instanceof Frames.eList) {
+                try {
+                    SourceImage s = new SourceImage(new Rectangle(sx, sy, sw, sh), i, alpha, (BufferedImage) Frames.getImage((Frames.eList) source), source.toString());
+                    s.setDisplayTime(timestart, timeend);
+                    s.setTransitionStart(Transition.NAMES.valueOf(transIn));
+                    s.setTransitionStop(Transition.NAMES.valueOf(transOut));
+                    s.setRemoteDisplay((Boolean) sources.getValueAt(i, 0));
+                    s.setEffect(Effect.eEffects.valueOf(effect));
+                    list.add(s);
+                } catch (IOException ex) {
+                }
             }
         }
         return list;

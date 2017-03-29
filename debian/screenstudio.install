@@ -11,3 +11,4 @@ FFMPEG/*.* /usr/lib/screenstudio/FFMPEG
 Overlays/*.* /usr/lib/screenstudio/Overlays
 libs/jkeymaster-1.*.* /usr/lib/screenstudio/lib
 libs/jna.jar /usr/lib/screenstudio/lib
+libs/Filters.jar /usr/lib/screenstudio/lib
