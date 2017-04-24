@@ -6,7 +6,6 @@ dist/* /usr/lib/screenstudio
 src/screenstudio/gui/images/logo.png /usr/lib/screenstudio
 src/screenstudio/gui/images/splash.gif /usr/lib/screenstudio
 src/screenstudio/gui/images/logo.png /usr/lib/screenstudio
-Capture/*.* /usr/lib/screenstudio/Capture
 FFMPEG/*.* /usr/lib/screenstudio/FFMPEG
 Overlays/*.* /usr/lib/screenstudio/Overlays
 libs/jkeymaster-1.*.* /usr/lib/screenstudio/lib
