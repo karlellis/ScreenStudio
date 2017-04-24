@@ -17,7 +17,6 @@
 package screenstudio.gui.images.frames;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 
@@ -27,29 +26,26 @@ import java.net.URL;
  */
 public class Frames {
     public static enum eList{
-        Frame_001,
-        Frame_002,
-        Frame_003,
+        Frame_001("Fancy Purple"),
+        Frame_002("Modern Red"),
+        Frame_003("Classic Wood"),
+	Frame_004("Flare"),
+	Frame_005("Dark Fade"),
+	Frame_006("Bright Eliptical");
+
+        String name;
+        eList(String name){
+            this.name = name;
+        }
+        @Override
+        public String toString(){
+            return this.name;
+        }
     }
     
     public static BufferedImage getImage(eList img) throws IOException{
         URL url = Frames.class.getResource(img.name() + ".png");
         BufferedImage bimg = javax.imageio.ImageIO.read(url);
         return bimg;
-    }
-    public static String getDescription(eList img){
-        String d = "None";
-        switch (img){
-            case Frame_001:
-                d = "Fancy Purple";
-                break;
-            case Frame_002:
-                d = "Modern Red";
-                break;
-            case Frame_003:
-                d = "Classic Wood";
-                break;
-        }
-        return d;
     }
 }

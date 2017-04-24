@@ -45,6 +45,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import screenstudio.encoder.FFMpeg;
+import screenstudio.sources.effects.Effect;
+import screenstudio.sources.transitions.Transition;
 
 /**
  * @author patrick
@@ -124,7 +126,7 @@ public class Layout {
         node.setNodeValue("" + value);
         output.getAttributes().setNamedItem(node);
     }
-    
+
     public int getVideoBitrate() {
         return new Integer(output.getAttributes().getNamedItem("videobitrate").getNodeValue());
     }
@@ -213,26 +215,28 @@ public class Layout {
         return output.getAttributes().getNamedItem("outputvideofolder").getNodeValue();
     }
 
-    public void setBackgroundMusic(File bgMusic){
+    public void setBackgroundMusic(File bgMusic) {
         Node node = document.createAttribute("backgroundmusic");
-        if (bgMusic == null){
+        if (bgMusic == null) {
             node.setNodeValue("");
         } else {
             node.setNodeValue(bgMusic.getAbsolutePath());
         }
         settings.getAttributes().setNamedItem(node);
     }
-    public File getBackgroundMusic(){
+
+    public File getBackgroundMusic() {
         File retValue = null;
-        if (settings.getAttributes().getNamedItem("backgroundmusic") != null){
+        if (settings.getAttributes().getNamedItem("backgroundmusic") != null) {
             String f = settings.getAttributes().getNamedItem("backgroundmusic").getNodeValue();
             retValue = new File(f);
-            if (f.length() == 0 || !retValue.exists() ){
+            if (f.length() == 0 || !retValue.exists()) {
                 retValue = null;
             }
         }
         return retValue;
     }
+
     public void reset() {
         NodeList nodes = root.getChildNodes();
         for (int i = 0; i < nodes.getLength(); i++) {
@@ -240,9 +244,9 @@ public class Layout {
         }
     }
 
-    public void addSource(SourceType typeValue, String idValue, int xValue, int yValue, int wValue, int hValue, float alphaValue, int orderValue, int fg, int bg, String font, int captureX, int captureY, long start, long end, String transStart, String transStop,boolean display, String effect) {
+    public void addSource(Source source) {
         String nodeName = "";
-        switch (typeValue) {
+        switch (source.getType()) {
             case Desktop:
                 nodeName = "desktop";
                 break;
@@ -260,16 +264,45 @@ public class Layout {
                 break;
         }
         Node node = document.createElement(nodeName);
-        Node x = document.createAttribute("x");
-        Node y = document.createAttribute("y");
         Node capx = document.createAttribute("capturex");
         Node capy = document.createAttribute("capturey");
-        Node w = document.createAttribute("w");
-        Node h = document.createAttribute("h");
+
+        //This is for the layouts
+        
+        for (Source.View v : source.getViews()) {
+            Node nodeView = document.createElement("view");
+            
+            Node viewName = document.createAttribute("name");
+            Node x = document.createAttribute("x");
+            Node y = document.createAttribute("y");
+            Node w = document.createAttribute("w");
+            Node h = document.createAttribute("h");
+            Node alpha = document.createAttribute("alpha");
+            Node order = document.createAttribute("order");
+            Node remoteDisplay = document.createAttribute("display");
+
+            viewName.setNodeValue(v.ViewName);
+            x.setNodeValue("" + v.X);
+            y.setNodeValue("" + v.Y);
+            w.setNodeValue("" + v.Width);
+            h.setNodeValue("" + v.Height);
+            alpha.setNodeValue("" + v.Alpha);
+            order.setNodeValue("" + v.Order);
+            remoteDisplay.setNodeValue("" + v.remoteDisplay);
+
+            nodeView.getAttributes().setNamedItem(x);
+            nodeView.getAttributes().setNamedItem(y);
+            nodeView.getAttributes().setNamedItem(w);
+            nodeView.getAttributes().setNamedItem(h);
+            nodeView.getAttributes().setNamedItem(alpha);
+            nodeView.getAttributes().setNamedItem(order);
+            nodeView.getAttributes().setNamedItem(remoteDisplay);
+            nodeView.getAttributes().setNamedItem(viewName);
+            node.appendChild(nodeView);
+        }
+
         Node id = document.createAttribute("id");
         Node type = document.createAttribute("type");
-        Node alpha = document.createAttribute("alpha");
-        Node order = document.createAttribute("order");
         Node foreg = document.createAttribute("fg");
         Node backg = document.createAttribute("bg");
         Node fontg = document.createAttribute("font");
@@ -277,27 +310,21 @@ public class Layout {
         Node timeEnd = document.createAttribute("end");
         Node transitionStart = document.createAttribute("transstart");
         Node transitionStop = document.createAttribute("transstop");
-        Node remoteDisplay = document.createAttribute("display");
         Node effectFilter = document.createAttribute("effect");
-        x.setNodeValue("" + xValue);
-        y.setNodeValue("" + yValue);
-        capx.setNodeValue("" + captureX);
-        capy.setNodeValue("" + captureY);
-        w.setNodeValue("" + wValue);
-        h.setNodeValue("" + hValue);
-        id.setNodeValue("" + idValue);
-        alpha.setNodeValue("" + alphaValue);
-        order.setNodeValue("" + orderValue);
-        foreg.setNodeValue("" + fg);
-        backg.setNodeValue("" + bg);
-        fontg.setNodeValue(font);
-        timeStart.setNodeValue(start+"");
-        timeEnd.setNodeValue(end+"");
-        transitionStart.setNodeValue(transStart);
-        transitionStop.setNodeValue(transStop);
-        remoteDisplay.setNodeValue("" + display);
-        effectFilter.setNodeValue(effect);
-        switch (typeValue) {
+
+        capx.setNodeValue("" + source.getCaptureX());
+        capy.setNodeValue("" + source.getCaptureY());
+
+        id.setNodeValue("" + source.getID());
+        foreg.setNodeValue("" + source.getForegroundColor());
+        backg.setNodeValue("" + source.getBackgroundColor());
+        fontg.setNodeValue(source.getFontName());
+        timeStart.setNodeValue(source.getStartTime() + "");
+        timeEnd.setNodeValue(source.getEndTime() + "");
+        transitionStart.setNodeValue(source.getTransitionStart().name());
+        transitionStop.setNodeValue(source.getTransitionStop().name());
+        effectFilter.setNodeValue(source.getEffect().name());
+        switch (source.getType()) {
             case LabelText:
                 type.setNodeValue("text");
                 break;
@@ -305,16 +332,11 @@ public class Layout {
                 type.setNodeValue("");
                 break;
         }
-        node.getAttributes().setNamedItem(x);
-        node.getAttributes().setNamedItem(y);
+
         node.getAttributes().setNamedItem(capx);
         node.getAttributes().setNamedItem(capy);
-        node.getAttributes().setNamedItem(w);
-        node.getAttributes().setNamedItem(h);
         node.getAttributes().setNamedItem(id);
         node.getAttributes().setNamedItem(type);
-        node.getAttributes().setNamedItem(alpha);
-        node.getAttributes().setNamedItem(order);
         node.getAttributes().setNamedItem(foreg);
         node.getAttributes().setNamedItem(backg);
         node.getAttributes().setNamedItem(fontg);
@@ -322,7 +344,6 @@ public class Layout {
         node.getAttributes().setNamedItem(timeEnd);
         node.getAttributes().setNamedItem(transitionStart);
         node.getAttributes().setNamedItem(transitionStop);
-        node.getAttributes().setNamedItem(remoteDisplay);
         node.getAttributes().setNamedItem(effectFilter);
         root.appendChild(node);
     }
@@ -331,40 +352,42 @@ public class Layout {
         NodeList nodes = document.getElementsByTagName("desktop");
         Source[] sources = new Source[nodes.getLength()];
         for (int i = 0; i < sources.length; i++) {
-            Source s = new Source();
+            Source s = new Source(0);
             Node n = nodes.item(i);
-            s.Type = SourceType.Desktop;
-            s.X = new Integer(n.getAttributes().getNamedItem("x").getNodeValue());
-            s.Y = new Integer(n.getAttributes().getNamedItem("y").getNodeValue());
-            s.Width = new Integer(n.getAttributes().getNamedItem("w").getNodeValue());
-            s.Height = new Integer(n.getAttributes().getNamedItem("h").getNodeValue());
-            s.ID = n.getAttributes().getNamedItem("id").getNodeValue();
-            s.Alpha = new Float(n.getAttributes().getNamedItem("alpha").getNodeValue());
-            s.Order = new Integer(n.getAttributes().getNamedItem("order").getNodeValue());
+            s.setType(SourceType.Desktop);
+
+            if (n.getAttributes().getNamedItem("x") != null) {
+                loadView(s, n);
+            } else {
+                // Load multiple views...
+                for (int j = 0;j < n.getChildNodes().getLength();j++){
+                    Node view = n.getChildNodes().item(j);
+                    if (view.getNodeName().equals("view")){
+                        loadView(s, view);
+                    }
+                }
+            }
+
+            s.setID(n.getAttributes().getNamedItem("id").getNodeValue());
             if (n.getAttributes().getNamedItem("capturex") != null) {
-                s.CaptureX = new Integer(n.getAttributes().getNamedItem("capturex").getNodeValue());
-                s.CaptureY = new Integer(n.getAttributes().getNamedItem("capturey").getNodeValue());
+                s.setCaptureX((int) new Integer(n.getAttributes().getNamedItem("capturex").getNodeValue()));
+                s.setCaptureY((int) new Integer(n.getAttributes().getNamedItem("capturey").getNodeValue()));
             } else {
-                s.CaptureX = 0;
-                s.CaptureY = 0;
+                s.setCaptureX(0);
+                s.setCaptureY(0);
             }
-            if (n.getAttributes().getNamedItem("start") != null){
-                s.startTime = Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue());
-                s.endTime = Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue());
+            if (n.getAttributes().getNamedItem("start") != null) {
+                s.setStartTime(Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue()));
+                s.setEndTime(Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue()));
             }
-            if (n.getAttributes().getNamedItem("transstart") != null){
-                s.transitionStart = n.getAttributes().getNamedItem("transstart").getNodeValue();
-                s.transitionStop = n.getAttributes().getNamedItem("transstop").getNodeValue();
+            if (n.getAttributes().getNamedItem("transstart") != null) {
+                s.setTransitionStart(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstart").getNodeValue()));
+                s.setTransitionStop(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstop").getNodeValue()));
             }
-            if (n.getAttributes().getNamedItem("display") != null){
-                s.remoteDisplay = Boolean.parseBoolean(n.getAttributes().getNamedItem("display").getNodeValue());
+            if (n.getAttributes().getNamedItem("effect") != null) {
+                s.setEffect(Effect.eEffects.valueOf(n.getAttributes().getNamedItem("effect").getNodeValue()));
             } else {
-                s.remoteDisplay= true;
-            }
-            if (n.getAttributes().getNamedItem("effect") != null){
-                s.effect = n.getAttributes().getNamedItem("effect").getNodeValue();
-            } else {
-                s.effect= "None";
+                s.setEffect(Effect.eEffects.None);
             }
             sources[i] = s;
         }
@@ -375,33 +398,35 @@ public class Layout {
         NodeList nodes = document.getElementsByTagName("webcam");
         Source[] sources = new Source[nodes.getLength()];
         for (int i = 0; i < sources.length; i++) {
-            Source s = new Source();
-            s.Type = SourceType.Webcam;
+            Source s = new Source(0);
+            s.setType(SourceType.Webcam);
             Node n = nodes.item(i);
-            s.X = new Integer(n.getAttributes().getNamedItem("x").getNodeValue());
-            s.Y = new Integer(n.getAttributes().getNamedItem("y").getNodeValue());
-            s.Width = new Integer(n.getAttributes().getNamedItem("w").getNodeValue());
-            s.Height = new Integer(n.getAttributes().getNamedItem("h").getNodeValue());
-            s.ID = n.getAttributes().getNamedItem("id").getNodeValue();
-            s.Alpha = new Float(n.getAttributes().getNamedItem("alpha").getNodeValue());
-            s.Order = new Integer(n.getAttributes().getNamedItem("order").getNodeValue());
-            if (n.getAttributes().getNamedItem("start") != null){
-                s.startTime = Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue());
-                s.endTime = Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue());
-            }
-            if (n.getAttributes().getNamedItem("transstart") != null){
-                s.transitionStart = n.getAttributes().getNamedItem("transstart").getNodeValue();
-                s.transitionStop = n.getAttributes().getNamedItem("transstop").getNodeValue();
-            }
-            if (n.getAttributes().getNamedItem("display") != null){
-                s.remoteDisplay = Boolean.parseBoolean(n.getAttributes().getNamedItem("display").getNodeValue());
+            s.setID(n.getAttributes().getNamedItem("id").getNodeValue());
+
+            if (n.getAttributes().getNamedItem("x") != null) {
+                loadView(s, n);
             } else {
-                s.remoteDisplay= true;
+                // Load multiple views...
+                for (int j = 0;j < n.getChildNodes().getLength();j++){
+                    Node view = n.getChildNodes().item(j);
+                    if (view.getNodeName().equals("view")){
+                        loadView(s, view);
+                    }
+                }
             }
-            if (n.getAttributes().getNamedItem("effect") != null){
-                s.effect = n.getAttributes().getNamedItem("effect").getNodeValue();
+
+            if (n.getAttributes().getNamedItem("start") != null) {
+                s.setStartTime(Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue()));
+                s.setEndTime(Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue()));
+            }
+            if (n.getAttributes().getNamedItem("transstart") != null) {
+                s.setTransitionStart(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstart").getNodeValue()));
+                s.setTransitionStop(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstop").getNodeValue()));
+            }
+            if (n.getAttributes().getNamedItem("effect") != null) {
+                s.setEffect(Effect.eEffects.valueOf(n.getAttributes().getNamedItem("effect").getNodeValue()));
             } else {
-                s.effect= "None";
+                s.setEffect(Effect.eEffects.None);
             }
             sources[i] = s;
         }
@@ -415,40 +440,60 @@ public class Layout {
         list.addAll(Arrays.asList(getDesktops()));
         list.addAll(Arrays.asList(getLabels()));
         list.addAll(Arrays.asList(getFrames()));
-        list.sort((Source o1, Source o2) -> o1.Order - o2.Order);
+        list.sort((Source o1, Source o2) -> o1.getViews().get(o1.getCurrentViewIndex()).Order - o2.getViews().get(o2.getCurrentViewIndex()).Order);
         return list;
     }
+
+    private void loadView(Source s, Node n) {
+        Source.View view = new Source.View();
+        s.getViews().add(view);
+        s.setCurrentViewIndex(0);
+        view.X = new Integer(n.getAttributes().getNamedItem("x").getNodeValue());
+        view.Y = new Integer(n.getAttributes().getNamedItem("y").getNodeValue());
+        view.Width = new Integer(n.getAttributes().getNamedItem("w").getNodeValue());
+        view.Height = new Integer(n.getAttributes().getNamedItem("h").getNodeValue());
+        view.Alpha = new Float(n.getAttributes().getNamedItem("alpha").getNodeValue());
+        view.Order = new Integer(n.getAttributes().getNamedItem("order").getNodeValue());
+        if (n.getAttributes().getNamedItem("display") != null) {
+            view.remoteDisplay = Boolean.parseBoolean(n.getAttributes().getNamedItem("display").getNodeValue());
+        } else {
+            view.remoteDisplay = true;
+        }
+    }
+
     private Source[] getImages() {
         NodeList nodes = document.getElementsByTagName("image");
         Source[] sources = new Source[nodes.getLength()];
         for (int i = 0; i < sources.length; i++) {
-            Source s = new Source();
-            s.Type = SourceType.Image;
+            Source s = new Source(0);
+            s.setType(SourceType.Image);
             Node n = nodes.item(i);
-            s.X = new Integer(n.getAttributes().getNamedItem("x").getNodeValue());
-            s.Y = new Integer(n.getAttributes().getNamedItem("y").getNodeValue());
-            s.Width = new Integer(n.getAttributes().getNamedItem("w").getNodeValue());
-            s.Height = new Integer(n.getAttributes().getNamedItem("h").getNodeValue());
-            s.ID = n.getAttributes().getNamedItem("id").getNodeValue();
-            s.Alpha = new Float(n.getAttributes().getNamedItem("alpha").getNodeValue());
-            s.Order = new Integer(n.getAttributes().getNamedItem("order").getNodeValue());
-            if (n.getAttributes().getNamedItem("start") != null){
-                s.startTime = Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue());
-                s.endTime = Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue());
-            }
-            if (n.getAttributes().getNamedItem("transstart") != null){
-                s.transitionStart = n.getAttributes().getNamedItem("transstart").getNodeValue();
-                s.transitionStop = n.getAttributes().getNamedItem("transstop").getNodeValue();
-            }
-            if (n.getAttributes().getNamedItem("display") != null){
-                s.remoteDisplay = Boolean.parseBoolean(n.getAttributes().getNamedItem("display").getNodeValue());
+            s.setID(n.getAttributes().getNamedItem("id").getNodeValue());
+
+            if (n.getAttributes().getNamedItem("x") != null) {
+                loadView(s, n);
             } else {
-                s.remoteDisplay= true;
+                // Load multiple views...
+                for (int j = 0;j < n.getChildNodes().getLength();j++){
+                    Node view = n.getChildNodes().item(j);
+                    if (view.getNodeName().equals("view")){
+                        loadView(s, view);
+                    }
+                }
             }
-            if (n.getAttributes().getNamedItem("effect") != null){
-                s.effect = n.getAttributes().getNamedItem("effect").getNodeValue();
+
+            if (n.getAttributes().getNamedItem("start") != null) {
+                s.setStartTime(Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue()));
+                s.setEndTime(Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue()));
+            }
+            if (n.getAttributes().getNamedItem("transstart") != null) {
+                s.setTransitionStart(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstart").getNodeValue()));
+                s.setTransitionStop(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstop").getNodeValue()));
+            }
+            if (n.getAttributes().getNamedItem("effect") != null) {
+                s.setEffect(Effect.eEffects.valueOf(n.getAttributes().getNamedItem("effect").getNodeValue()));
             } else {
-                s.effect= "None";
+                s.setEffect(Effect.eEffects.None);
             }
             sources[i] = s;
         }
@@ -459,33 +504,35 @@ public class Layout {
         NodeList nodes = document.getElementsByTagName("frame");
         Source[] sources = new Source[nodes.getLength()];
         for (int i = 0; i < sources.length; i++) {
-            Source s = new Source();
-            s.Type = SourceType.Frame;
+            Source s = new Source(0);
+            s.setType(SourceType.Frame);
             Node n = nodes.item(i);
-            s.X = new Integer(n.getAttributes().getNamedItem("x").getNodeValue());
-            s.Y = new Integer(n.getAttributes().getNamedItem("y").getNodeValue());
-            s.Width = new Integer(n.getAttributes().getNamedItem("w").getNodeValue());
-            s.Height = new Integer(n.getAttributes().getNamedItem("h").getNodeValue());
-            s.ID = n.getAttributes().getNamedItem("id").getNodeValue();
-            s.Alpha = new Float(n.getAttributes().getNamedItem("alpha").getNodeValue());
-            s.Order = new Integer(n.getAttributes().getNamedItem("order").getNodeValue());
-            if (n.getAttributes().getNamedItem("start") != null){
-                s.startTime = Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue());
-                s.endTime = Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue());
-            }
-            if (n.getAttributes().getNamedItem("transstart") != null){
-                s.transitionStart = n.getAttributes().getNamedItem("transstart").getNodeValue();
-                s.transitionStop = n.getAttributes().getNamedItem("transstop").getNodeValue();
-            }
-            if (n.getAttributes().getNamedItem("display") != null){
-                s.remoteDisplay = Boolean.parseBoolean(n.getAttributes().getNamedItem("display").getNodeValue());
+            s.setID(n.getAttributes().getNamedItem("id").getNodeValue());
+
+            if (n.getAttributes().getNamedItem("x") != null) {
+                loadView(s, n);
             } else {
-                s.remoteDisplay= true;
+                // Load multiple views...
+                for (int j = 0;j < n.getChildNodes().getLength();j++){
+                    Node view = n.getChildNodes().item(j);
+                    if (view.getNodeName().equals("view")){
+                        loadView(s, view);
+                    }
+                }
             }
-            if (n.getAttributes().getNamedItem("effect") != null){
-                s.effect = n.getAttributes().getNamedItem("effect").getNodeValue();
+
+            if (n.getAttributes().getNamedItem("start") != null) {
+                s.setStartTime(Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue()));
+                s.setEndTime(Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue()));
+            }
+            if (n.getAttributes().getNamedItem("transstart") != null) {
+                s.setTransitionStart(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstart").getNodeValue()));
+                s.setTransitionStop(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstop").getNodeValue()));
+            }
+            if (n.getAttributes().getNamedItem("effect") != null) {
+                s.setEffect(Effect.eEffects.valueOf(n.getAttributes().getNamedItem("effect").getNodeValue()));
             } else {
-                s.effect= "None";
+                s.setEffect(Effect.eEffects.None);
             }
             sources[i] = s;
         }
@@ -496,41 +543,43 @@ public class Layout {
         NodeList nodes = document.getElementsByTagName("label");
         Source[] sources = new Source[nodes.getLength()];
         for (int i = 0; i < sources.length; i++) {
-            Source s = new Source();
-            s.Type = SourceType.LabelText;
+            Source s = new Source(0);
+            s.setType(SourceType.LabelText);
             Node n = nodes.item(i);
-            s.X = new Integer(n.getAttributes().getNamedItem("x").getNodeValue());
-            s.Y = new Integer(n.getAttributes().getNamedItem("y").getNodeValue());
-            s.Width = new Integer(n.getAttributes().getNamedItem("w").getNodeValue());
-            s.Height = new Integer(n.getAttributes().getNamedItem("h").getNodeValue());
-            s.ID = n.getAttributes().getNamedItem("id").getNodeValue();
-            s.Alpha = new Float(n.getAttributes().getNamedItem("alpha").getNodeValue());
-            s.Order = new Integer(n.getAttributes().getNamedItem("order").getNodeValue());
+            s.setID(n.getAttributes().getNamedItem("id").getNodeValue());
+
+            if (n.getAttributes().getNamedItem("x") != null) {
+                loadView(s, n);
+            } else {
+                // Load multiple views...
+                for (int j = 0;j < n.getChildNodes().getLength();j++){
+                    Node view = n.getChildNodes().item(j);
+                    if (view.getNodeName().equals("view")){
+                        loadView(s, view);
+                    }
+                }
+            }
+
             // IF is required since not available in version 3.0.0
             if (n.getAttributes().getNamedItem("fg") != null) {
-                s.foregroundColor = new Integer(n.getAttributes().getNamedItem("fg").getNodeValue());
-                s.backgroundColor = new Integer(n.getAttributes().getNamedItem("bg").getNodeValue());
+                s.setForegroundColor((int) new Integer(n.getAttributes().getNamedItem("fg").getNodeValue()));
+                s.setBackgroundColor((int) new Integer(n.getAttributes().getNamedItem("bg").getNodeValue()));
             }
             if (n.getAttributes().getNamedItem("font") != null) {
-                s.fontName = n.getAttributes().getNamedItem("font").getNodeValue();
+                s.setFontName(n.getAttributes().getNamedItem("font").getNodeValue());
             }
-            if (n.getAttributes().getNamedItem("start") != null){
-                s.startTime = Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue());
-                s.endTime = Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue());
+            if (n.getAttributes().getNamedItem("start") != null) {
+                s.setStartTime(Long.parseLong(n.getAttributes().getNamedItem("start").getNodeValue()));
+                s.setEndTime(Long.parseLong(n.getAttributes().getNamedItem("end").getNodeValue()));
             }
-            if (n.getAttributes().getNamedItem("transstart") != null){
-                s.transitionStart = n.getAttributes().getNamedItem("transstart").getNodeValue();
-                s.transitionStop = n.getAttributes().getNamedItem("transstop").getNodeValue();
+            if (n.getAttributes().getNamedItem("transstart") != null) {
+                s.setTransitionStart(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstart").getNodeValue()));
+                s.setTransitionStop(Transition.NAMES.valueOf(n.getAttributes().getNamedItem("transstop").getNodeValue()));
             }
-            if (n.getAttributes().getNamedItem("display") != null){
-                s.remoteDisplay = Boolean.parseBoolean(n.getAttributes().getNamedItem("display").getNodeValue());
+            if (n.getAttributes().getNamedItem("effect") != null) {
+                s.setEffect(Effect.eEffects.valueOf(n.getAttributes().getNamedItem("effect").getNodeValue()));
             } else {
-                s.remoteDisplay= true;
-            }
-            if (n.getAttributes().getNamedItem("effect") != null){
-                s.effect = n.getAttributes().getNamedItem("effect").getNodeValue();
-            } else {
-                s.effect= "None";
+                s.setEffect(Effect.eEffects.None);
             }
             sources[i] = s;
         }
