@@ -37,24 +37,68 @@ public class SourceImage extends Source {
     private byte[] data = null;
     private BufferedImage[] images;
     private int currentIndex = 0;
+    private long mNextPicture = 0;
+    private long mTimeDelay = 1000;
+    private boolean mIsSlideshow = false;
 
-    public SourceImage(List<screenstudio.targets.Source.View> views,  File image) {
-        super(views, 1000, image.getAbsolutePath(), BufferedImage.TYPE_4BYTE_ABGR);
+    public SourceImage(List<screenstudio.targets.Source.View> views, File image) {
+        super(views, 0, image.getAbsolutePath(), BufferedImage.TYPE_4BYTE_ABGR);
         mFile = image;
         mType = Layout.SourceType.Image;
+        mNextPicture = System.currentTimeMillis() + mTimeDelay;
     }
 
-    public SourceImage(List<screenstudio.targets.Source.View> views ,BufferedImage image, String id) {
-        super(views, 1000, id, image.getType());
+    public SourceImage(List<screenstudio.targets.Source.View> views, SlideShow imgs) {
+        super(views, 0, "SlideShow", BufferedImage.TYPE_4BYTE_ABGR);
+        mFile = null;
+        images = new BufferedImage[imgs.getImages().size()];
+        for (int i = 0; i < images.length; i++) {
+            images[i] = new BufferedImage(mBounds.width, mBounds.height, mImageType);
+            images[i].createGraphics().drawImage(imgs.getImage(i).getScaledInstance(mBounds.width, mBounds.height, Image.SCALE_SMOOTH), 0, 0, null);
+            data = ((DataBufferByte) images[i].getRaster().getDataBuffer()).getData();
+        }
+        mTimeDelay = 0;
+        mNextPicture = System.currentTimeMillis() + mTimeDelay;
+        mType = Layout.SourceType.Image;
+        mIsSlideshow = true;
+    }
+
+    public boolean isSlideShow(){
+        return mIsSlideshow;
+    }
+    public void setNextImageDelay(long delay) {
+        mTimeDelay = delay;
+    }
+
+    public int getCurrentImageIndex() {
+        return currentIndex;
+    }
+    public void setCurrentImageIndex(int index) {
+        mTimeDelay = 0;
+        if (index >= images.length) {
+            currentIndex = 0;
+        } else if (index < 0){
+            currentIndex = 0;
+        } else {
+            currentIndex = index;
+        }
+    }
+
+    public SourceImage(List<screenstudio.targets.Source.View> views, BufferedImage image, String id) {
+        super(views, 0, id, image.getType());
         mFile = null;
         images = new BufferedImage[1];
         images[0] = image;
+        mNextPicture = System.currentTimeMillis() + mTimeDelay;
         mType = Layout.SourceType.Frame;
     }
 
     @Override
     protected void getData(byte[] buffer) throws IOException {
-        currentIndex++;
+        if (mTimeDelay > 0 && mNextPicture <= System.currentTimeMillis()) {
+            currentIndex++;
+            mNextPicture = System.currentTimeMillis() + mTimeDelay;
+        }
         if (currentIndex >= images.length) {
             currentIndex = 0;
         }
@@ -102,6 +146,7 @@ public class SourceImage extends Source {
                 images[index].createGraphics().drawImage(frame.getScaledInstance(mBounds.width, mBounds.height, Image.SCALE_SMOOTH), 0, 0, null);
                 data = ((DataBufferByte) images[index].getRaster().getDataBuffer()).getData();
             }
+            mTimeDelay = 100;
 
         } catch (IOException ex) {
 

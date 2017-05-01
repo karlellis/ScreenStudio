@@ -22,6 +22,9 @@ import com.tulskiy.keymaster.common.Provider;
 import java.awt.AWTException;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.SystemTray;
@@ -29,6 +32,8 @@ import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 import java.io.File;
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -44,6 +49,7 @@ import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
+import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.ToolTipManager;
 import javax.swing.filechooser.FileFilter;
@@ -58,6 +64,7 @@ import screenstudio.remote.HTTPServer;
 import screenstudio.sources.Compositor;
 import screenstudio.sources.Microphone;
 import screenstudio.sources.Screen;
+import screenstudio.sources.SlideShow;
 import screenstudio.sources.Source;
 import screenstudio.sources.SystemCheck;
 import screenstudio.sources.Webcam;
@@ -100,7 +107,7 @@ public class ScreenStudio extends javax.swing.JFrame {
         mLayoutPreview.setOutputHeight((Integer) spinHeight.getValue());
         panPreviewLayout.add(mLayoutPreview, BorderLayout.CENTER);
         this.setTitle("ScreenStudio " + screenstudio.Version.MAIN);
-        this.setSize(700, 450);
+        this.setSize(700, 500);
         ToolTipManager.sharedInstance().setDismissDelay(8000);
         ToolTipManager.sharedInstance().setInitialDelay(2000);
         new Thread(() -> {
@@ -143,7 +150,21 @@ public class ScreenStudio extends javax.swing.JFrame {
     }
 
     private void initControls() {
+        java.util.prefs.Preferences p = java.util.prefs.Preferences.userRoot().node("screenstudio");
         updateRemoteSources();
+        DefaultComboBoxModel<String> fontmodel = new DefaultComboBoxModel<>(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames());
+        cboThumbnailFont.setModel(fontmodel);
+        cboThumbnailFont.setSelectedItem(p.get("THUMBNAILFONT", "Monospaced"));
+        String[] colors = new String[]{"WHITE", "RED", "BLUE", "GREEN", "YELLOW", "GRAY", "BLACK"};
+        DefaultComboBoxModel<String> colorModel = new DefaultComboBoxModel<>(colors);
+        cboThumbnailColor.setModel(colorModel);
+        cboThumbnailColor.setSelectedItem(p.get("THUMBNAILCOLOR", "RED"));
+        cboThumbnailBackground.setModel(new DefaultComboBoxModel<>(colors));
+        cboThumbnailBackground.setSelectedItem(p.get("THUMBNAILBGCOLOR", "WHITE"));
+
+        panThumbnailCanvas.setOpaque(true);
+        panThumbnailCanvas.setBackground(Color.black);
+
         cboTarget.setModel(new DefaultComboBoxModel<>(FFMpeg.FORMATS.values()));
         cboTarget.setSelectedIndex(0);
         cboVideoPresets.setModel(new DefaultComboBoxModel<>(FFMpeg.Presets.values()));
@@ -176,7 +197,6 @@ public class ScreenStudio extends javax.swing.JFrame {
         updateMenuWebcams();
         updateMenuDesktops();
         // get audio sync
-        java.util.prefs.Preferences p = java.util.prefs.Preferences.userRoot().node("screenstudio");
         spinAudioDelay.setValue(p.getFloat("audiodelay", 0));
         cboDefaultRecordingAction.setSelectedIndex(p.getInt("DefaultRecAction", 0));
         chkDoNotUseTrayIcon.setSelected(p.getBoolean("DoNotUseTrayIcon", chkDoNotUseTrayIcon.isSelected()));
@@ -236,6 +256,88 @@ public class ScreenStudio extends javax.swing.JFrame {
                     updateRemoteSources();
                 }
             });
+        }
+    }
+
+    private void updateThumbnail(java.awt.Rectangle area, Graphics2D g, boolean clearImage) {
+        String color = cboThumbnailColor.getSelectedItem().toString();
+        String bgColor = cboThumbnailBackground.getSelectedItem().toString();
+        Color cColor = Color.RED;
+        Color cBgColor = Color.WHITE;
+        switch (color) {
+            case "WHITE":
+                cColor = Color.WHITE;
+                break;
+            case "BLACK":
+                cColor = Color.BLACK;
+                break;
+            case "BLUE":
+                cColor = Color.BLUE;
+                break;
+            case "RED":
+                cColor = Color.RED;
+                break;
+            case "GREEN":
+                cColor = Color.GREEN;
+                break;
+            case "GRAY":
+                cColor = Color.GRAY;
+                break;
+            case "YELLOW":
+                cColor = Color.YELLOW;
+                break;
+        }
+        switch (bgColor) {
+            case "WHITE":
+                cBgColor = Color.WHITE;
+                break;
+            case "BLACK":
+                cBgColor = Color.BLACK;
+                break;
+            case "BLUE":
+                cBgColor = Color.BLUE;
+                break;
+            case "RED":
+                cBgColor = Color.RED;
+                break;
+            case "GREEN":
+                cBgColor = Color.GREEN;
+                break;
+            case "GRAY":
+                cBgColor = Color.GRAY;
+                break;
+            case "YELLOW":
+                cBgColor = Color.YELLOW;
+                break;
+        }
+        if (clearImage) {
+            g.setBackground(Color.BLACK);
+            g.clearRect(0, 0, area.width, area.height);
+        }
+        String font = cboThumbnailFont.getSelectedItem().toString();
+        String text = txtThumbnailTitle.getText();
+        String[] words = text.split(" ");
+        int fontSize = area.height / (words.length + 2);
+        g.setFont(new Font(font, Font.BOLD, fontSize));
+        int y = g.getFontMetrics().getHeight() + 5;
+        for (String w : words) {
+            w = w.replaceAll("_", " ");
+            g.setColor(cBgColor);
+            int strWidth = g.getFontMetrics().stringWidth(w);
+            int smallerFontSize = fontSize;
+            while (strWidth > area.width) {
+                g.setFont(new Font(font, Font.BOLD, smallerFontSize -= 5));
+                strWidth = g.getFontMetrics().stringWidth(w);
+            }
+            int x = area.width - strWidth;
+            if (x < 0) {
+                x = 0;
+            }
+            x = x / 2;
+            g.drawString(w, x, y);
+            g.setColor(cColor);
+            g.drawString(w, x + 2, y - 2);
+            y += g.getFontMetrics().getHeight();
         }
     }
 
@@ -417,7 +519,11 @@ public class ScreenStudio extends javax.swing.JFrame {
                         }
                         break;
                     case Image:
-                        s.setSourceObject(new File(s.getID()));
+                        if (!s.getID().contains(";")) {
+                            s.setSourceObject(new File(s.getID()));
+                        } else {
+                            s.setSourceObject(new SlideShow(s.getID()));
+                        }
                         break;
                     case LabelText:
                         LabelText t = new LabelText(s.getID());
@@ -482,6 +588,8 @@ public class ScreenStudio extends javax.swing.JFrame {
                 s.setID(((Webcam) s.getSourceObject()).getDevice());
             } else if (s.getSourceObject() instanceof LabelText) {
                 s.setID(((LabelText) s.getSourceObject()).getText());
+            } else if (s.getSourceObject() instanceof SlideShow) {
+                s.setID(((SlideShow) s.getSourceObject()).getID());
             }
             mCurrentLayout.addSource(s);
         }
@@ -698,6 +806,22 @@ public class ScreenStudio extends javax.swing.JFrame {
         jLabel14 = new javax.swing.JLabel();
         lblBGMusic = new javax.swing.JLabel();
         btnBGMusicBrowse = new javax.swing.JButton();
+        panThumbnail = new javax.swing.JPanel();
+        lblThumbTitle = new javax.swing.JLabel();
+        txtThumbnailTitle = new javax.swing.JTextField();
+        lblThumbTitle1 = new javax.swing.JLabel();
+        lblThumbTitle2 = new javax.swing.JLabel();
+        lblThumbTitle3 = new javax.swing.JLabel();
+        panThumbnailPreview = new javax.swing.JPanel();
+        panThumbnailCanvas = new JPanel(){
+            public void paintComponent(Graphics g){
+                super.paintComponents(g);
+                updateThumbnail(this.getBounds(),(Graphics2D) g,true);
+            }
+        };
+        cboThumbnailColor = new javax.swing.JComboBox<>();
+        cboThumbnailBackground = new javax.swing.JComboBox<>();
+        cboThumbnailFont = new javax.swing.JComboBox<>();
         panStatus = new javax.swing.JPanel();
         lblMessages = new javax.swing.JLabel();
         lblRemoteMessage = new javax.swing.JLabel();
@@ -804,7 +928,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                         .addGroup(panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(numVideoBitrate, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(cboVideoPresets, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(141, Short.MAX_VALUE))
         );
         panTargetSettingsLayout.setVerticalGroup(
             panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -829,7 +953,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                 .addGroup(panTargetSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(lblRTMPKey)
                     .addComponent(txtRTMPKey, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(130, Short.MAX_VALUE))
         );
 
         chkKeepScreenRatio.setText(bundle.getString("KEEP_SCREEN_RATIO")); // NOI18N
@@ -909,7 +1033,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                 .addComponent(lblSourceViewsCount)
                 .addGap(18, 18, 18)
                 .addComponent(cboSourceViews, javax.swing.GroupLayout.PREFERRED_SIZE, 136, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(388, Short.MAX_VALUE))
+                .addContainerGap(496, Short.MAX_VALUE))
         );
         panSourcesViewsLayout.setVerticalGroup(
             panSourcesViewsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -918,7 +1042,7 @@ public class ScreenStudio extends javax.swing.JFrame {
                 .addGroup(panSourcesViewsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(lblSourceViewsCount)
                     .addComponent(cboSourceViews, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(17, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         panSources.add(panSourcesViews, java.awt.BorderLayout.NORTH);
@@ -1245,10 +1369,112 @@ public class ScreenStudio extends javax.swing.JFrame {
                 .addComponent(panSettingsVideos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(panSettingsMisc, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(94, Short.MAX_VALUE))
         );
 
         tabs.addTab(bundle.getString("OPTIONS"), panOptions); // NOI18N
+
+        lblThumbTitle.setText("Thumbnail Title");
+
+        txtThumbnailTitle.setText("ScreenStudio is amazing!");
+        txtThumbnailTitle.setToolTipText("Use the underscore instead of a space to keep words on the same line");
+        txtThumbnailTitle.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                txtThumbnailTitleKeyTyped(evt);
+            }
+        });
+
+        lblThumbTitle1.setText("Color");
+
+        lblThumbTitle2.setText("Background color");
+
+        lblThumbTitle3.setText("Font");
+
+        panThumbnailPreview.setBorder(javax.swing.BorderFactory.createTitledBorder(bundle.getString("PREVIEW"))); // NOI18N
+        panThumbnailPreview.setLayout(new java.awt.BorderLayout());
+
+        panThumbnailCanvas.setBackground(new java.awt.Color(0, 0, 0));
+
+        javax.swing.GroupLayout panThumbnailCanvasLayout = new javax.swing.GroupLayout(panThumbnailCanvas);
+        panThumbnailCanvas.setLayout(panThumbnailCanvasLayout);
+        panThumbnailCanvasLayout.setHorizontalGroup(
+            panThumbnailCanvasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 350, Short.MAX_VALUE)
+        );
+        panThumbnailCanvasLayout.setVerticalGroup(
+            panThumbnailCanvasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 218, Short.MAX_VALUE)
+        );
+
+        panThumbnailPreview.add(panThumbnailCanvas, java.awt.BorderLayout.CENTER);
+
+        cboThumbnailColor.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cboThumbnailColorActionPerformed(evt);
+            }
+        });
+
+        cboThumbnailBackground.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cboThumbnailBackgroundActionPerformed(evt);
+            }
+        });
+
+        cboThumbnailFont.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cboThumbnailFontActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout panThumbnailLayout = new javax.swing.GroupLayout(panThumbnail);
+        panThumbnail.setLayout(panThumbnailLayout);
+        panThumbnailLayout.setHorizontalGroup(
+            panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(panThumbnailLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addComponent(panThumbnailPreview, javax.swing.GroupLayout.PREFERRED_SIZE, 360, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(panThumbnailLayout.createSequentialGroup()
+                            .addGroup(panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(lblThumbTitle2)
+                                .addComponent(lblThumbTitle3)
+                                .addComponent(lblThumbTitle, javax.swing.GroupLayout.PREFERRED_SIZE, 144, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addGroup(panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(cboThumbnailBackground, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(cboThumbnailFont, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(cboThumbnailColor, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(txtThumbnailTitle, javax.swing.GroupLayout.DEFAULT_SIZE, 260, Short.MAX_VALUE))
+                            .addGap(6, 6, 6)))
+                    .addComponent(lblThumbTitle1))
+                .addContainerGap(328, Short.MAX_VALUE))
+        );
+        panThumbnailLayout.setVerticalGroup(
+            panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(panThumbnailLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblThumbTitle)
+                    .addComponent(txtThumbnailTitle, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblThumbTitle1)
+                    .addComponent(cboThumbnailColor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblThumbTitle2)
+                    .addComponent(cboThumbnailBackground, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(panThumbnailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(lblThumbTitle3)
+                    .addComponent(cboThumbnailFont, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(panThumbnailPreview, javax.swing.GroupLayout.PREFERRED_SIZE, 240, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+
+        tabs.addTab("Thumbnail", panThumbnail);
 
         getContentPane().add(tabs, java.awt.BorderLayout.CENTER);
         tabs.getAccessibleContext().setAccessibleName(bundle.getString("OUTPUT")); // NOI18N
@@ -1582,6 +1808,10 @@ public class ScreenStudio extends javax.swing.JFrame {
 
                 mRecordingTimestamp = System.currentTimeMillis();
                 new Thread(() -> {
+                    File thumbnail = new File(mVideoOutputFolder, "thumbnail.png");
+                    if (thumbnail.exists()) {
+                        thumbnail.delete();
+                    }
                     FFMpeg f = mFFMpeg;
                     FFMpeg.RunningState initState = FFMpeg.RunningState.Starting;
                     while (f != null) {
@@ -1596,6 +1826,21 @@ public class ScreenStudio extends javax.swing.JFrame {
                             setTitle(LANGUAGES.getString("RECORDING") + "! (" + seconds + " sec)");
                         } else {
                             setTitle(LANGUAGES.getString("RECORDING") + "! (" + (seconds / 60) + " min " + (seconds % 60) + " sec)");
+                        }
+                        if (seconds == 20 && !thumbnail.exists()) {
+                            BufferedImage img = new BufferedImage(mRemote.getCompositor().getWidth(), mRemote.getCompositor().getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+                            byte[] buffer = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
+                            System.arraycopy(mRemote.getCompositor().getImage(), 0, buffer, 0, buffer.length);
+                            try {
+                                // draw text...
+                                String title = txtThumbnailTitle.getText();
+                                if (title.trim().length() > 0) {
+                                    updateThumbnail(new Rectangle(img.getWidth(), img.getHeight()), img.createGraphics(), false);
+                                    javax.imageio.ImageIO.write(img, "png", thumbnail);
+                                }
+                            } catch (IOException ex) {
+                                Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+                            }
                         }
                         if (f.getState() == FFMpeg.RunningState.Error) {
                             System.err.println("Encoder error detected...");
@@ -1710,15 +1955,26 @@ public class ScreenStudio extends javax.swing.JFrame {
             }
         });
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        chooser.setMultiSelectionEnabled(true);
         chooser.showOpenDialog(this);
         if (chooser.getSelectedFile() != null) {
-            File image = chooser.getSelectedFile();
             //add new source...
             screenstudio.targets.Source source = new screenstudio.targets.Source(cboSourceViews.getItemCount());
             source.setCurrentViewIndex(cboSourceViews.getSelectedIndex());
             source.Views.get(source.CurrentViewIndex).remoteDisplay = true;
             source.setType(SourceType.Image);
-            source.setSourceObject(image);
+
+            if (chooser.getSelectedFiles().length <= 1) {
+                File image = chooser.getSelectedFile();
+                source.setSourceObject(image);
+            } else {
+                try {
+                    SlideShow images = new SlideShow(chooser.getSelectedFiles());
+                    source.setSourceObject(images);
+                } catch (IOException ex) {
+                    Logger.getLogger(ScreenStudio.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
             source.Views.get(source.CurrentViewIndex).X = 0;
             source.Views.get(source.CurrentViewIndex).Y = 0;
             source.Views.get(source.CurrentViewIndex).Width = 200;
@@ -1964,6 +2220,28 @@ public class ScreenStudio extends javax.swing.JFrame {
         mLayoutPreview.repaint();
     }//GEN-LAST:event_cboSourceViewsActionPerformed
 
+    private void cboThumbnailColorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboThumbnailColorActionPerformed
+        panThumbnailCanvas.repaint();
+        java.util.prefs.Preferences p = java.util.prefs.Preferences.userRoot().node("screenstudio");
+        p.put("THUMBNAILCOLOR",cboThumbnailColor.getSelectedItem().toString());
+    }//GEN-LAST:event_cboThumbnailColorActionPerformed
+
+    private void cboThumbnailBackgroundActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboThumbnailBackgroundActionPerformed
+        panThumbnailCanvas.repaint();
+        java.util.prefs.Preferences p = java.util.prefs.Preferences.userRoot().node("screenstudio");
+        p.put("THUMBNAILBGCOLOR",cboThumbnailBackground.getSelectedItem().toString());
+    }//GEN-LAST:event_cboThumbnailBackgroundActionPerformed
+
+    private void cboThumbnailFontActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cboThumbnailFontActionPerformed
+        panThumbnailCanvas.repaint();
+        java.util.prefs.Preferences p = java.util.prefs.Preferences.userRoot().node("screenstudio");
+        p.put("THUMBNAILFONT",cboThumbnailFont.getSelectedItem().toString());        
+    }//GEN-LAST:event_cboThumbnailFontActionPerformed
+
+    private void txtThumbnailTitleKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtThumbnailTitleKeyTyped
+        panThumbnailCanvas.repaint();
+    }//GEN-LAST:event_txtThumbnailTitleKeyTyped
+
     /**
      * @param args the command line arguments
      */
@@ -1975,13 +2253,14 @@ public class ScreenStudio extends javax.swing.JFrame {
          * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
          */
         try {
-//            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-//                if ("Nimbus".equals(info.getName())) {
-//                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-//                    break;
-//                }
-//            }
-            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                System.out.println("LAF: " + info.getName());
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+//            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
             java.util.logging.Logger.getLogger(ScreenStudio.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
@@ -2009,6 +2288,9 @@ public class ScreenStudio extends javax.swing.JFrame {
     private javax.swing.JComboBox<String> cboRTMPServers;
     private javax.swing.JComboBox<String> cboSourceViews;
     private javax.swing.JComboBox<FFMpeg.FORMATS> cboTarget;
+    private javax.swing.JComboBox<String> cboThumbnailBackground;
+    private javax.swing.JComboBox<String> cboThumbnailColor;
+    private javax.swing.JComboBox<String> cboThumbnailFont;
     private javax.swing.JComboBox<FFMpeg.Presets> cboVideoPresets;
     private javax.swing.JCheckBox chkDoNotUseTrayIcon;
     private javax.swing.JCheckBox chkKeepScreenRatio;
@@ -2035,6 +2317,10 @@ public class ScreenStudio extends javax.swing.JFrame {
     private javax.swing.JLabel lblRTMPServer;
     private javax.swing.JLabel lblRemoteMessage;
     private javax.swing.JLabel lblSourceViewsCount;
+    private javax.swing.JLabel lblThumbTitle;
+    private javax.swing.JLabel lblThumbTitle1;
+    private javax.swing.JLabel lblThumbTitle2;
+    private javax.swing.JLabel lblThumbTitle3;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenuItem mnuCapture;
     private javax.swing.JMenu mnuEdit;
@@ -2060,6 +2346,9 @@ public class ScreenStudio extends javax.swing.JFrame {
     private javax.swing.JPanel panSourcesViews;
     private javax.swing.JPanel panStatus;
     private javax.swing.JPanel panTargetSettings;
+    private javax.swing.JPanel panThumbnail;
+    private javax.swing.JPanel panThumbnailCanvas;
+    private javax.swing.JPanel panThumbnailPreview;
     private javax.swing.JProgressBar pgAudioLevels;
     private javax.swing.JScrollPane scrollSources;
     private javax.swing.JSpinner spinAudioDelay;
@@ -2070,6 +2359,7 @@ public class ScreenStudio extends javax.swing.JFrame {
     private javax.swing.JTable tableSources;
     private javax.swing.JTabbedPane tabs;
     private javax.swing.JTextField txtRTMPKey;
+    private javax.swing.JTextField txtThumbnailTitle;
     private javax.swing.JTextField txtVideoFolder;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
