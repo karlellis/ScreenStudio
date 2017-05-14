@@ -16,8 +16,8 @@
  */
 package screenstudio.sources;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
@@ -36,17 +36,15 @@ import screenstudio.sources.transitions.Transition;
  *
  * @author patrick
  */
-public class Compositor {
+public class Compositor implements Runnable {
 
     private java.util.List<Source> mSources;
     private final int mFPS;
     private final Rectangle mOutputSize;
-    private final byte[] mData;
+    private byte[] mData;
     private boolean mIsReady = false;
-    private final Graphics2D g;
     private final long mStartTime;
     private boolean mRequestStop = false;
-    private final BufferedImage mImage;
     private byte[] mPreviewBuffer;
     private long mTimeDelta = 0;
     private Effect mEffects = new Effect();
@@ -74,10 +72,9 @@ public class Compositor {
                 new Thread(t).start();
             }
         }
-        mImage = new BufferedImage(mOutputSize.width, mOutputSize.height, BufferedImage.TYPE_3BYTE_BGR);
-        g = mImage.createGraphics();
-        mData = ((DataBufferByte) mImage.getRaster().getDataBuffer()).getData();
+        mData = new byte[0];
         mStartTime = System.currentTimeMillis();
+        new Thread(this).start();
         mIsReady = true;
     }
 
@@ -121,41 +118,6 @@ public class Compositor {
     }
 
     public byte[] getData() {
-        java.util.Arrays.fill(mData, (byte) 0);
-        mTimeDelta = (System.currentTimeMillis() - mStartTime) / 1000;
-        for (int i = 0; i < mSources.size(); i++) {
-            Source s = mSources.get(i);
-            BufferedImage img = mEffects.apply(s.getEffect(), s.getImage());
-            if (s.isRemoteDisplay()) {
-                if ((s.getEndDisplayTime() == 0 || s.getEndDisplayTime() >= mTimeDelta)
-                        && (s.getStartDisplayTime() <= mTimeDelta)) {
-                    //Showing for the first time???
-                    if (s.getTransitionStart() != Transition.NAMES.None) {
-                        //Then we can trigger the start event...
-                        Transition t = Transition.getInstance(s.getTransitionStart(), s, mFPS, mOutputSize);
-                        new Thread(t).start();
-                        s.setTransitionStart(Transition.NAMES.None);
-                    } else {
-                        if (s.getTransitionStop() != Transition.NAMES.None && (mRequestStop || (s.getEndDisplayTime() - 1 == mTimeDelta))) {
-                            Transition t = Transition.getInstance(s.getTransitionStop(), s, mFPS, mOutputSize);
-                            new Thread(t).start();
-                            s.setTransitionStop(Transition.NAMES.None);
-                        }
-                        g.setComposite(s.getAlpha());
-                        Rectangle r = s.getBounds();
-
-                        if (img.getWidth() != r.width || img.getHeight() != r.height) {
-                            g.drawImage(img.getScaledInstance(r.width, r.height, Image.SCALE_DEFAULT), r.x, r.y, null);
-                        } else {
-                            g.drawImage(img, r.x, r.y, null);
-                        }
-                    }
-                }
-            }
-        }
-        mRequestStop = false;
-        mPreviewBuffer = new byte[mData.length];
-        System.arraycopy(mData, 0, mPreviewBuffer, 0, mPreviewBuffer.length);
         return mData;
     }
 
@@ -249,9 +211,77 @@ public class Compositor {
                     list.add(s);
                 } catch (IOException ex) {
                 }
+            } else if (source instanceof String) {
+                switch (sources.get(i).getType()) {
+                    case Custom:
+                        SourceFFMpeg s = SourceFFMpeg.getCustomInstance(sources.get(i), sources.get(i).getViews(), fps);
+                        s.setFPS(fps);
+                        s.setDisplayTime(timestart, timeend);
+                        s.setTransitionStart(transIn);
+                        s.setTransitionStop(transOut);
+                        s.setEffect(effect);
+                        s.setViewIndex(sources.get(i).getCurrentViewIndex());
+                        list.add(s);
+                        break;
+                }
             }
         }
         return list;
+    }
+
+    @Override
+    public void run() {
+
+        long frameDelay = 1000 / mFPS;
+        long nextPTS = System.currentTimeMillis() + frameDelay;
+        while (!mRequestStop) {
+            BufferedImage img = new BufferedImage(mOutputSize.width, mOutputSize.height, BufferedImage.TYPE_3BYTE_BGR);
+            Graphics2D g = img.createGraphics();
+            mTimeDelta = (System.currentTimeMillis() - mStartTime) / 1000;
+            for (int i = 0; i < mSources.size(); i++) {
+                Source s = mSources.get(i);
+                if (s.isRemoteDisplay()) {
+                    if ((s.getEndDisplayTime() == 0 || s.getEndDisplayTime() >= mTimeDelta)
+                            && (s.getStartDisplayTime() <= mTimeDelta)) {
+                        //Showing for the first time???
+                        if (s.getTransitionStart() != Transition.NAMES.None) {
+                            //Then we can trigger the start event...
+                            Transition t = Transition.getInstance(s.getTransitionStart(), s, mFPS, mOutputSize);
+                            new Thread(t).start();
+                            s.setTransitionStart(Transition.NAMES.None);
+                        } else {
+                            if (s.getTransitionStop() != Transition.NAMES.None && (mRequestStop || (s.getEndDisplayTime() - 1 == mTimeDelta))) {
+                                Transition t = Transition.getInstance(s.getTransitionStop(), s, mFPS, mOutputSize);
+                                new Thread(t).start();
+                                s.setTransitionStop(Transition.NAMES.None);
+                            }
+                            g.setComposite(s.getAlpha());
+                            Rectangle r = s.getBounds();
+                            BufferedImage source;
+                            if (s.getEffect() == Effect.eEffects.None) {
+                                source = s.getImage();
+                            } else {
+                                source = mEffects.apply(s.getEffect(), s.getImage());
+                            }
+                            g.drawImage(source, r.x, r.y, r.x + r.width, r.y + r.height, 0, 0, source.getWidth(), source.getHeight(), null);
+                        }
+                    }
+                }
+            }
+            mData = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
+            mPreviewBuffer = mData;
+            g.dispose();
+            long wait = nextPTS - System.currentTimeMillis();
+            if (wait > 0) {
+                try {
+                    Thread.sleep(wait);
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(Compositor.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+            nextPTS += frameDelay;
+        }
+        mRequestStop = false;
     }
 
 }

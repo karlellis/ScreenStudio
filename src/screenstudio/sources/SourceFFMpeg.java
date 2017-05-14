@@ -16,7 +16,6 @@
  */
 package screenstudio.sources;
 
-import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -36,7 +35,6 @@ public class SourceFFMpeg extends Source implements Runnable {
     private DataInputStream mInputData;
     private final String mInput;
     private int mFPS;
-    private final Rectangle mCaptureSize;
     private boolean mStopMe = false;
     private byte[] dataBuffer;
 
@@ -47,10 +45,11 @@ public class SourceFFMpeg extends Source implements Runnable {
                 byte[] buffer = new byte[dataBuffer.length];
                 mInputData.readFully(buffer);
                 dataBuffer = buffer;
+                //Thread.sleep(10);
             } catch (IOException ex) {
                 //Logger.getLogger(SourceFFMpeg.class.getName()).log(Level.SEVERE, null, ex);
                 mStopMe = true;
-            }
+            } 
         }
     }
 
@@ -61,11 +60,10 @@ public class SourceFFMpeg extends Source implements Runnable {
         Stream
     }
 
-    public SourceFFMpeg(List<screenstudio.targets.Source.View> views,Rectangle captureSize, int fps, String input, SourceType type, String id) {
+    public SourceFFMpeg(List<screenstudio.targets.Source.View> views, int fps, String input, SourceType type, String id) {
         super( views, 0, id, BufferedImage.TYPE_3BYTE_BGR);
         mInput = input;
         mFPS = fps;
-        mCaptureSize = captureSize;
         mType = type;
     }
 
@@ -88,6 +86,7 @@ public class SourceFFMpeg extends Source implements Runnable {
         System.out.println(command);
         mInputData = new DataInputStream(mProcess.getInputStream());
         dataBuffer = new byte[mBounds.width * mBounds.height * 3];
+        mInputData.readFully(dataBuffer);
         new Thread(this).start();
     }
 
@@ -108,44 +107,29 @@ public class SourceFFMpeg extends Source implements Runnable {
         mInputData = null;
     }
 
-    protected String getInput(String source, DEVICES type) {
-        String input = "";
-
-        switch (type) {
-            case Desktop:
-                input = " -f " + mFFMpeg.getDesktopFormat() + " -video_size " + mCaptureSize.width + "x" + mCaptureSize.height + " -i " + source;
-                break;
-            case File:
-                input = " -i " + source;
-                break;
-            case Stream:
-                input = " -i " + source;
-                break;
-            case Webcam:
-                input = " -f " + mFFMpeg.getWebcamFormat() + " -i " + source;
-                break;
-        }
-        return input;
-    }
-
     public static SourceFFMpeg getDesktopInstance(Screen display,List<screenstudio.targets.Source.View> views , int fps) {
         String input = " -f " + new FFMpeg(null).getDesktopFormat() + " -video_size " + display.getWidth() + "x" + display.getHeight() + " -i " + display.getId();
         if (Screen.isWindows()) {
             input = " -f " + new FFMpeg(null).getDesktopFormat() + " -video_size " + display.getWidth() + "x" + display.getHeight() + " -offset_x " + display.getSize().x + " -offset_y " + display.getSize().y + " " + " -i " + display.getId();
         }
-        SourceFFMpeg f = new SourceFFMpeg(views,display.getSize(), fps, input, SourceType.Desktop, display.getLabel());
+        SourceFFMpeg f = new SourceFFMpeg(views, fps, input, SourceType.Desktop, display.getLabel());
         f.mCaptureX = display.getSize().x;
         f.mCaptureY = display.getSize().y;
         return f;
     }
 
+    public static SourceFFMpeg getCustomInstance(screenstudio.targets.Source source,List<screenstudio.targets.Source.View> views , int fps) {
+        String input = source.getSourceObject().toString();
+        SourceFFMpeg f = new SourceFFMpeg(views, fps, input, SourceType.Custom, source.getID());
+        return f;
+    }
     public static SourceFFMpeg getWebcamInstance(Webcam webcam,List<screenstudio.targets.Source.View> views , int fps) {
-        String inputFormat = " -s " + webcam.getWidth() + "x" + webcam.getHeight() + " -r " + fps;
+        String inputFormat = " -video_size " + webcam.getWidth() + "x" + webcam.getHeight() + " -framerate " + fps;
         if (Screen.isWindows()){
             inputFormat = "";
         }
         String input = " -f " + new FFMpeg(null).getWebcamFormat() + inputFormat  + " -i " + webcam.getDevice();
         System.out.println(input);
-        return new SourceFFMpeg(views, new Rectangle(webcam.getSize()), fps, input, SourceType.Webcam, webcam.getDevice());
+        return new SourceFFMpeg(views, fps, input, SourceType.Webcam, webcam.getDevice());
     }
 }
